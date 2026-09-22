@@ -97,3 +97,20 @@ praktyki dane/
    - Kod w `src/` powinien spełniać standardy PEP 8 i posiadać adnotacje typów (type hinting).
    - Kod prototypowy i eksploracyjny umieszczamy w `notebooks/`, natomiast funkcje wielokrotnego użytku refaktoryzujemy do modułów w `src/`.
 Projekt analityczny - wprowadzenie.
+## Instrukcja uruchomienia projektu
+
+### 1. Otwarcie projektu w Antigravity
+1. Uruchom program **Antigravity**.
+2. Wybierz z menu: **File** -> **Open Folder...** (Otwórz folder).
+3. Wskaż główny katalog projektu (`praktyki dane`).
+
+### 2. Dane wejściowe
+Plik źródłowy z danymi wykorzystywanymi do analizy znajduje się pod ścieżką:
+* `data/raw/orders_intro.csv`
+
+### 3. Wybór środowiska wirtualnego (.venv) i uruchomienie notebooka
+1. W drzewie plików po lewej stronie przejdź do katalogu `notebooks/` i otwórz plik `notebooks/01_start.ipynb`.
+2. W prawym górnym rogu okna notebooka kliknij przycisk **Select Kernel**.
+3. Wybierz pozycję **Python Environments...**, a następnie wskaż środowisko `.venv` znajdujące się w katalogu projektu (`.venv/Scripts/python.exe`).
+4. Kliknij na górnym pasku notebooka opcję **Restart Kernel**, a następnie **Run All** (lub uruchamiaj komórki po kolei od góry).
+5. Wszystkie komórki wykonają się poprawnie, prezentując podsumowanie statystyczne (6 dni, suma 120, średnia 20, mediana 11), wykres liniowy oraz tabelę analizy obserwacji odstającej.
