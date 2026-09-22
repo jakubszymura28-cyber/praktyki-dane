@@ -1,7 +1,7 @@
 # Praktyki - Analiza Danych
 
 ## Cel praktyk
-Celem praktyk jest opanowanie narzędzi analitycznych, automatyzacja pracy z danymi oraz efektywna współpraca z asystentami AI w środowisku IDE.
+Celem praktyk jest opanowanie analizy danych z wykorzystaniem biblioteki pandas, środowiska Python oraz kontroli wersji Git. Ponadto celem jest opanowanie narzędzi analitycznych, automatyzacja pracy z danymi oraz efektywna współpraca z asystentami AI w środowisku IDE.
 
 ---
 

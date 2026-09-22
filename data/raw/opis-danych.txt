@@ -1,0 +1,15 @@
+DANE SYNTETYCZNE — projekt edukacyjny „Ile zamówień obsłużymy jutro?”
+Wersja: 1; ziarno: 20260918; generator w pliku program-praktyk.html.
+Źródło: deterministyczny generator ćwiczeniowy, bez rzeczywistych danych. Dane wygenerowane do swobodnego użycia w tym ćwiczeniu; nie pochodzą z Kaggle.
+420 dni od 2024-01-01. Podział czasowy przed uczeniem: 252 daty treningu, 84 walidacji, 84 testu.
+Trening: 2024-01-01–2024-09-08; walidacja: 2024-09-09–2024-12-01; test: 2024-12-02–2025-02-23.
+CSV: UTF-8, przecinek, kropka dziesiętna; pusty tekst = brak.
+date: data ISO; promo: promocja planowana 0/1; planned_ad_spend_pln: budżet planowany w PLN; orders: faktyczne zamówienia; visits: faktyczne wizyty; revenue_pln: faktyczny przychód PLN.
+calendar.csv: date, day_of_week (0=poniedziałek, 6=niedziela), is_weekend (0/1).
+Trening zawiera celowe duplikaty, braki, ujemne cele i niespójne promo (' yes ' oznacza 1). Nie edytuj oryginału.
+Reguły: usuń identyczne duplikaty; sprzeczne rekordy dla daty zgłoś; mapuj promo jawnie; ujemny cel oznacz jako nieznany i raportuj. Nie imputuj celu.
+Pozostaw braki budżetu w danych oczyszczonych; medianę imputacji ucz dopiero w pipeline wyłącznie na treningu.
+Dozwolone cechy: day_of_week, promo, planned_ad_spend_pln. visits oraz revenue_pln są znane dopiero po dniu — leakage.
+Walidację otwieramy w dniu 10, test w dniu 12. Ograniczenie proceduralne, nie techniczne.
+Generowane zależności: dzień tygodnia, promocja, budżet, trend, cykl 30-dniowy i szum. Wyniki nie dowodzą skuteczności na rzeczywistym sklepie.
+Brak obowiązku osiągnięcia ustalonego MAE lub pokonania baseline’u. Liczy się poprawny, odtwarzalny proces.
