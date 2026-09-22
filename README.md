@@ -96,3 +96,4 @@ praktyki dane/
 4. **Jakość kodu:**
    - Kod w `src/` powinien spełniać standardy PEP 8 i posiadać adnotacje typów (type hinting).
    - Kod prototypowy i eksploracyjny umieszczamy w `notebooks/`, natomiast funkcje wielokrotnego użytku refaktoryzujemy do modułów w `src/`.
+Projekt analityczny - wprowadzenie.
