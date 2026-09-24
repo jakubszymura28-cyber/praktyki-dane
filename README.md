@@ -148,3 +148,23 @@ Do automatycznej weryfikacji poprawności reguł czyszczenia na izolowanych pró
    * **Próba 2 (Niepoprawna data):** Weryfikuje, czy uszkodzony format daty zgłasza czytelny błąd `ValueError` informujący o nieoczekiwanym formacie danych (zamiast zwracać pusty wynik).
    * **Bezpieczeństwo danych:** Testy operują na katalogu tymczasowym (`tempfile`) i nie modyfikują oryginalnego pliku `data/raw/orders_train_raw.csv`.
 
+### 6. Baza danych SQLite i zapytania analityczne (SQL)
+Do załadowania oczyszczonych danych do lokalnej bazy SQLite oraz wykonania zapytań analitycznych służy skrypt [src/query_data.py](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/src/query_data.py).
+
+1. **Polecenie uruchomienia w terminalu z głównego folderu:**
+   ```powershell
+   .\.venv\Scripts\python src/query_data.py
+   ```
+   *(lub po uprzedniej aktywacji wirtualnego środowiska: `python src/query_data.py`)*
+
+2. **Działanie skryptu:**
+   * Wczytuje dane z pliku [data/processed/orders_train.csv](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/data/processed/orders_train.csv) do tabeli `orders_train` w lokalnej bazie [data/processed/orders.sqlite](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/data/processed/orders.sqlite).
+   * Weryfikuje typy kolumn: `orders` jako liczba rzeczywista (`REAL`), a wartości brakujące jako natywny SQL `NULL` (nie tekst `'NULL'`).
+   * Demonstruje zachowanie funkcji agregujących `COUNT(*)` vs `COUNT(kolumna)` vs `AVG(kolumna)` na zestawie `8, 10, NULL`.
+   * Wykonuje zapytania analityczne zdefiniowane w pliku [sql/queries.sql](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/sql/queries.sql):
+     - 10 pierwszych dat w kolejności chronologicznej,
+     - Dni z aktywną promocją (`promo = 1`),
+     - 5 dni z największą liczbą zamówień (`orders`),
+     - Porównanie `COUNT(*)` i `COUNT(orders)` (badanie braków).
+
+
