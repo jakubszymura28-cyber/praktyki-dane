@@ -114,3 +114,22 @@ Plik źródłowy z danymi wykorzystywanymi do analizy znajduje się pod ścieżk
 3. Wybierz pozycję **Python Environments...**, a następnie wskaż środowisko `.venv` znajdujące się w katalogu projektu (`.venv/Scripts/python.exe`).
 4. Kliknij na górnym pasku notebooka opcję **Restart Kernel**, a następnie **Run All** (lub uruchamiaj komórki po kolei od góry).
 5. Wszystkie komórki wykonają się poprawnie, prezentując podsumowanie statystyczne (6 dni, suma 120, średnia 20, mediana 11), wykres liniowy oraz tabelę analizy obserwacji odstającej.
+
+### 4. Przygotowanie i czyszczenie zbioru treningowego (Pipeline)
+Do powtarzalnego, deterministycznego wyczyszczenia zbioru treningowego służy skrypt [src/prepare_data.py](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/src/prepare_data.py).
+
+1. **Uruchomienie w terminalu Antigravity z głównego katalogu projektu:**
+   ```powershell
+   .\.venv\Scripts\python src/prepare_data.py
+   ```
+   *(lub po uprzedniej aktywacji wirtualnego środowiska: `python src/prepare_data.py`)*
+
+2. **Działanie skryptu:**
+   * Wczytuje zbiór surowy [data/raw/orders_train_raw.csv](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/data/raw/orders_train_raw.csv) (tryb read-only, bez modyfikacji oryginału).
+   * Usuwa identyczne powtórzone wiersze (redukcja z 255 do 252 wierszy).
+   * Standaryzuje kolumnę `promo` (zamienia tekst `' yes '` na `1`, rzutuje na typ `int64`).
+   * Waliduje format dat (ISO `YYYY-MM-DD`), weryfikuje brak duplikatów i sortuje chronologicznie.
+   * Obsługuje wartości ujemne `orders`: zamienia je na brak (`NaN`) i dodaje kolumnę flagi `orders_invalid` (`1` dla wartości ujemnych, `0` dla poprawnych).
+   * Zachowuje braki w `planned_ad_spend_pln` i `orders` bez imputacji.
+   * Weryfikuje strukturę danych i zgłasza błąd (`ValueError`) przy nieoczekiwanym formacie danych lub braku kolumn zamiast zwracać pusty wynik.
+   * Zapisuje oczyszczony plik wynikowy do [data/processed/orders_train.csv](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/data/processed/orders_train.csv).
