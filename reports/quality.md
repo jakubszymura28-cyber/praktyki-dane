@@ -22,9 +22,9 @@ Notebook weryfikacyjny: `notebooks/02_analysis.ipynb`
 | **Identyczne powtórzone wiersze** | `date` występuje dokładnie raz. Z dwóch identycznych wierszy zostawiamy jeden. | Usuwamy duplikat (`drop_duplicates()`), zachowując tylko jedno wystąpienie. | Data `2024-01-31` (oraz `2024-05-30`, `2024-08-18`) – wiersz zduplikowany na końcu pliku. |
 | **Sprzeczne rekordy dla tej samej daty** | `date` to poprawna data i występuje raz. Jeśli ta sama data ma różne liczby zamówień, program ma zgłosić konflikt i zatrzymać się, bo nie wiemy, który zapis jest prawidłowy. | Zgłaszamy błąd walidacji i przerywamy wykonanie skryptu, jeśli dla tej samej daty pojawią się różne wartości. | W badanym CSV nie występuje (wszystkie 3 powtórzone daty są w 100% identycznymi wierszami). Reguła zabezpiecza pipeline. |
 | **Niepoprawny format lub unikalność daty** | `date` to poprawna data i występuje raz (format ISO `YYYY-MM-DD`). | Walidujemy format ISO, konwertujemy na `datetime` i sprawdzamy unikalność po usunięciu duplikatów. | Daty od `2024-01-01` do `2024-09-08` (dokładnie 252 unikalne dni po deduplikacji). |
-| **Ujemna liczba zamówień** | `orders` to liczba całkowita od zera wzwyż albo brak. Liczba ujemna jest błędem. | Oznaczamy wartość ujemną jako błąd/brak i usuwamy wiersz ze zbioru treningowego (nie wolno imputować celu). | Data `2024-04-30` (`orders = -5.0`) oraz data `2024-08-13` (`orders = -5.0`). |
-| **Brak liczby zamówień (pusta komórka)** | `orders` to liczba całkowita od zera wzwyż albo brak. Brak `orders` oznacza nieznaną liczbę zamówień, zero oznacza brak zamówień. | Pozostawiamy jako nieznany cel i usuwamy wiersz ze zbioru treningowego (nie imputujemy celu). | Data `2024-03-04` (puste pole `orders`) oraz data `2024-07-11` (puste pole `orders`). |
-| **Brakujący budżet reklamowy** | Budżet (`planned_ad_spend_pln`) jest nieujemny albo pusty. | Pozostawiamy puste komórki w danych oczyszczonych; imputację medianą wykonujemy dopiero w pipeline na zbiorze treningowym. | Data `2024-01-18` (oraz `2024-03-30`, `2024-06-19`, `2024-09-05`) – puste komórki budżetu. |
+| **Ujemna liczba zamówień** | `orders` to liczba całkowita od zera wzwyż albo brak. Liczba ujemna jest błędem. | W pliku wynikowym zamieniamy ujemną wartość na brak danych (`NaN`) i dodajemy kolumnę `orders_invalid` (wartość 1 dla błędnych rekordów, 0 dla poprawnych). Liczbę takich zmian (2 rekordy) odnotowujemy w raporcie. Braków nie uzupełniamy. | Data `2024-04-30` (`orders = -5.0`) oraz data `2024-08-13` (`orders = -5.0`). |
+| **Brak liczby zamówień (pusta komórka)** | `orders` to liczba całkowita od zera wzwyż albo brak. Brak `orders` oznacza nieznaną liczbę zamówień, zero oznacza brak zamówień. | Pozostawiamy jako brak danych (`NaN`); braków celu na tym etapie nie uzupełniamy (nie imputujemy). W kolumnie `orders_invalid` przypisujemy 0 (ponieważ brak nie jest ujemną wartością). | Data `2024-03-04` (puste pole `orders`) oraz data `2024-07-11` (puste pole `orders`). |
+| **Brakujący budżet reklamowy** | Budżet (`planned_ad_spend_pln`) jest nieujemny albo pusty. | Pozostawiamy puste komórki (`NaN`) w danych oczyszczonych; budżetu na tym etapie nie imputujemy. | Data `2024-01-18` (oraz `2024-03-30`, `2024-06-19`, `2024-09-05`) – puste komórki budżetu. |
 | **Niespójny tekstowy zapis promocji** | `promo` ma wartość 0 lub 1. Wpis `' yes '` oznacza promocję, więc zostanie zamieniony na 1. | Usuwamy zbędne białe znaki (`strip`), zamieniamy tekst `'yes'` na liczbę `1`, a kolumnę rzutujemy na typ `int64`. | Data `2024-02-10` (oraz `2024-05-03`, `2024-07-20`) – wartość `" yes "`. |
 
 ---
@@ -151,8 +151,8 @@ Kolumna powinna przyjmować wartości binarne `0` (brak promocji) lub `1` (promo
 1. **Integralność danych źródłowych:** Plik [data/raw/orders_train_raw.csv](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/data/raw/orders_train_raw.csv) pozostawiamy niezmieniony. Wszystkie operacje czyszczące zapisujemy do [data/processed/](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/data/processed/).
 2. **Duplikaty:** Usunąć 3 nadmiarowe wiersze metodą `df.drop_duplicates()`.
 3. **Standaryzacja `promo`:** Usunąć białe znaki (`.str.strip()`), zamapować `'yes'` na `1`, rzutować na typ całkowity `int64`.
-4. **Obsługa targetu (`orders`):** Wiersze z brakami (`NaN`) oraz wartościami ujemnymi (`< 0`) — łącznie 4 rekordy — oznaczyć jako brakujące i usunąć ze zbioru treningowego modeli regresyjnych.
-5. **Obsługa braków w `planned_ad_spend_pln`:** Pozostawić braki na etapie wstępnym; uzupełnienie medianą przeprowadzić w potoku `scikit-learn` (`SimpleImputer(strategy='median')`) dopasowanym wyłącznie na zbiorze treningowym.
+4. **Obsługa targetu (`orders`) oraz flaga `orders_invalid`:** W pliku wynikowym wartości ujemne (`< 0`, dokładnie 2 rekordy) zamieniamy na brak danych (`NaN`) i dodajemy kolumnę `orders_invalid` (wartość 1 dla błędnych rekordów, 0 dla poprawnych). Wiersze z brakami (`NaN`) – łącznie 4 rekordy (2 pierwotne braki + 2 zamienione z ujemnych) – nie są uzupełniane na tym etapie i zostaną wykluczone z treningu modeli.
+5. **Obsługa braków w `planned_ad_spend_pln`:** Pozostawić braki (4 rekordy) na etapie wstępnym bez uzupełniania; imputację medianą przeprowadzić w potoku `scikit-learn` (`SimpleImputer(strategy='median')`) dopasowanym wyłącznie na zbiorze treningowym.
 6. **Ochrona przed wyciekiem danych (data leakage):** Kolumny `visits` oraz `revenue_pln` nie mogą być przekazywane do modelu predykcyjnego jako cechy.
 
 ---
@@ -181,4 +181,47 @@ W procesie budowy modelu prognozującego liczbę zamówień na kolejny dzień kl
 ## 8. Kluczowy wniosek: dlaczego pustego `orders` nie można zamienić na zero?
 
 Pustego pola w kolumnie `orders` (brak danych / `NaN`) **nie wolno zamienić na zero**, ponieważ brak oznacza **nieznaną liczbę zamówień** (np. błąd systemu rejestrującego czy brak raportu), podczas gdy zero to konkretna, potwierdzona biznesowo informacja, że **sklep pracował, lecz nie zrealizował żadnego zamówienia**. Wstawienie zera w miejsce braku zafałszowałoby historię sprzedaży i wprowadziło model w błąd, dlatego wiersze z brakującym celem należy usunąć z danych treningowych, a nie imputować.
+
+---
+
+## 9. Trzy próby sprawdzające reguły czyszczenia (Unit Test Cases)
+
+W celu weryfikacji powtarzalnego potoku czyszczącego zdefiniowano 3 małe próby testowe z dokładnie określonym wejściem i oczekiwanym wynikiem:
+
+### 🧪 Próba 1: Usunięcie identycznych powtórzonych wierszy (Deduplikacja)
+* **Wejście (Dane surowe):** Wystąpienie dwóch w 100% identycznych rekordów dla daty `2024-01-31`:
+  * Wiersz indeks 30: `date='2024-01-31', promo='0', planned_ad_spend_pln=896.19, orders=85.0, visits=919, revenue_pln=9355.78`
+  * Wiersz indeks 252: `date='2024-01-31', promo='0', planned_ad_spend_pln=896.19, orders=85.0, visits=919, revenue_pln=9355.78`
+* **Oczekiwany wynik:** W zbiorze po deduplikacji data `2024-01-31` występuje **dokładnie jeden raz**, a łączna liczba wierszy zmniejsza się o 3 (z 255 do 252).
+
+### 🧪 Próba 2: Standaryzacja niespójnego zapisu promocji (`promo`)
+* **Wejście (Dane surowe):** Rekord z daty `2024-02-10` (wiersz indeks 40), w którym pole `promo` zawiera wartość tekstową ze spacjami:
+  * `date='2024-02-10', promo=' yes ', ...`
+* **Oczekiwany wynik:** Usunięcie białych znaków, konwersja na wartość liczbową `1` oraz spójny typ `int64` dla całej kolumny:
+  * `date='2024-02-10', promo=1` (typ `int64`).
+
+### 🧪 Próba 3: Obsługa ujemnej wartości zamówień (`orders < 0`) i flaga `orders_invalid`
+* **Wejście (Dane surowe):** Rekord z daty `2024-04-30` (wiersz indeks 120), w którym liczba zamówień jest ujemna:
+  * `date='2024-04-30', orders=-5.0, ...`
+* **Oczekiwany wynik:**
+  * Wartość `orders` zamieniona na brak danych (`NaN`).
+  * Nowo utworzona kolumna flagi binarnej `orders_invalid` przyjmuje wartość `1` (błąd danych).
+  * Dla pozostałych poprawnych rekordów kolumna `orders_invalid` przyjmuje wartość `0`.
+
+---
+
+## 10. Tabela porównawcza przed i po czyszczeniu (Before / After Summary)
+
+| Cecha / Metryka | Zbiór surowy (`orders_train_raw.csv`) | Zbiór wyczyszczony (`orders_train_cleaned.csv`) | Różnica / Efekt reguły |
+|---|:---:|:---:|---|
+| **Liczba wierszy** | 255 | 252 | **-3 wiersze** (usunięto identyczne duplikaty) |
+| **Liczba kolumn** | 6 | 7 | **+1 kolumna** (dodano flagę `orders_invalid`) |
+| **Unikalne daty** | 252 (3 powtórzone) | 252 (100% unikalne) | Każda data występuje dokładnie jeden raz |
+| **Typ kolumny `promo`** | `object` / `str` (`' yes '`, `'0'`, `'1'`) | `int64` (`0` lub `1`) | Standaryzacja tekstu, brak spacji, typ numeryczny |
+| **Wartości ujemne `orders`** | 2 wiersze (`orders = -5.0`) | 0 wierszy | Wartości ujemne zastąpione wartością `NaN` |
+| **Liczba braków `orders` (NaN)** | 2 wiersze | 4 wiersze | 2 pierwotne braki + 2 zamienione z wartości ujemnych |
+| **Liczba braków `planned_ad_spend_pln`** | 4 wiersze | 4 wiersze | Zachowane bez zmian (imputacja dopiero w pipeline ML) |
+| **Kolumna `orders_invalid`** | Brak | Wartości `0` (250 wierszy) i `1` (2 wiersze) | Jawna informacja audytowa o pierwotnie błędnych celach |
+| **Braki `visits` i `revenue_pln`** | 0 braków | 0 braków | Kolumny kompletne (wyłączone z cech modelu - leakage) |
+
 
