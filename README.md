@@ -133,3 +133,18 @@ Do powtarzalnego, deterministycznego wyczyszczenia zbioru treningowego służy s
    * Zachowuje braki w `planned_ad_spend_pln` i `orders` bez imputacji.
    * Weryfikuje strukturę danych i zgłasza błąd (`ValueError`) przy nieoczekiwanym formacie danych lub braku kolumn zamiast zwracać pusty wynik.
    * Zapisuje oczyszczony plik wynikowy do [data/processed/orders_train.csv](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/data/processed/orders_train.csv).
+
+### 5. Uruchomienie testów jednostkowych (Próby sprawdzające)
+Do automatycznej weryfikacji poprawności reguł czyszczenia na izolowanych próbkach danych służy skrypt [tests/test_prepare_data.py](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/tests/test_prepare_data.py).
+
+1. **Polecenie uruchomienia testów w terminalu z głównego folderu:**
+   ```powershell
+   .\.venv\Scripts\python tests/test_prepare_data.py
+   ```
+   *(lub po uprzedniej aktywacji wirtualnego środowiska: `python tests/test_prepare_data.py`)*
+
+2. **Zakres sprawdzanych prób:**
+   * **Próba 1 (Ujemne `orders`):** Weryfikuje, czy ujemna wartość zamówień (`-5.0`) zostaje zamieniona na brak danych (`NaN`), a w kolumnie `orders_invalid` ustawiona zostaje flaga `1`.
+   * **Próba 2 (Niepoprawna data):** Weryfikuje, czy uszkodzony format daty zgłasza czytelny błąd `ValueError` informujący o nieoczekiwanym formacie danych (zamiast zwracać pusty wynik).
+   * **Bezpieczeństwo danych:** Testy operują na katalogu tymczasowym (`tempfile`) i nie modyfikują oryginalnego pliku `data/raw/orders_train_raw.csv`.
+
