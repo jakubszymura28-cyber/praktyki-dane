@@ -210,18 +210,19 @@ W celu weryfikacji powtarzalnego potoku czyszczącego zdefiniowano 3 małe prób
 
 ---
 
-## 10. Tabela porównawcza przed i po czyszczeniu (Before / After Summary)
+## 10. Tabela porównawcza przed i po czyszczeniu (Przed vs Po)
 
-| Cecha / Metryka | Zbiór surowy (`orders_train_raw.csv`) | Zbiór wyczyszczony (`orders_train_cleaned.csv`) | Różnica / Efekt reguły |
+Tabela podsumowująca wpływ zatwierdzonych reguł czyszczenia na zbiór treningowy:
+
+| Metryka / Wskaźnik | Przed | Po | Różnica / Komentarz |
 |---|:---:|:---:|---|
-| **Liczba wierszy** | 255 | 252 | **-3 wiersze** (usunięto identyczne duplikaty) |
-| **Liczba kolumn** | 6 | 7 | **+1 kolumna** (dodano flagę `orders_invalid`) |
-| **Unikalne daty** | 252 (3 powtórzone) | 252 (100% unikalne) | Każda data występuje dokładnie jeden raz |
-| **Typ kolumny `promo`** | `object` / `str` (`' yes '`, `'0'`, `'1'`) | `int64` (`0` lub `1`) | Standaryzacja tekstu, brak spacji, typ numeryczny |
-| **Wartości ujemne `orders`** | 2 wiersze (`orders = -5.0`) | 0 wierszy | Wartości ujemne zastąpione wartością `NaN` |
-| **Liczba braków `orders` (NaN)** | 2 wiersze | 4 wiersze | 2 pierwotne braki + 2 zamienione z wartości ujemnych |
-| **Liczba braków `planned_ad_spend_pln`** | 4 wiersze | 4 wiersze | Zachowane bez zmian (imputacja dopiero w pipeline ML) |
-| **Kolumna `orders_invalid`** | Brak | Wartości `0` (250 wierszy) i `1` (2 wiersze) | Jawna informacja audytowa o pierwotnie błędnych celach |
-| **Braki `visits` i `revenue_pln`** | 0 braków | 0 braków | Kolumny kompletne (wyłączone z cech modelu - leakage) |
+| **Liczba wierszy** | 255 | 252 | **-3 wiersze** (usunięto identyczne duplikaty na końcu pliku) |
+| **Liczba różnych dat** | 252 | 252 | **0** (100% unikalnych dni, zakres od 2024-01-01 do 2024-09-08) |
+| **Liczba poprawnych `orders`** | 251 | 248 | **-3** (2 ujemne wartości zamieniono na `NaN`, 1 duplikat usunięto) |
+| **Liczba pustych budżetów (`planned_ad_spend_pln`)** | 4 | 4 | **0** (puste pola zachowano bez imputacji) |
+| **Wpisy `promo` zmienione na 1** | 0 | 3 | **+3** (tekstowe wpisy `' yes '` przekonwertowano na liczbę `1`, typ `int64`) |
+
+Dodatkowo w zbiorze wynikowym dodano kolumnę flagi audytowej `orders_invalid` (2 jedynki oznaczające ujemne wartości w surowych danych).
+
 
 
