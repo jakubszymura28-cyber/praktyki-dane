@@ -336,6 +336,128 @@ Taki rachunek przypisuje obu grupom **dokładnie tę samą wagę (po 50%)**, zup
   $$\text{Średnia} = 10 \times \frac{2}{10} + 20 \times \frac{8}{10} = 10 \times 0.2 + 20 \times 0.8 = 2 + 16 = \mathbf{18}$$
 - **Wniosek dla zapytań SQL:** Nigdy nie wolno liczyć `AVG()` z wcześniej zagregowanych średnich (`AVG(avg_orders)`). Zawsze łączną średnią wyliczamy z sumy wszystkich poprawnych wartości podzielonej przez łączną liczbę wierszy: $\frac{\text{SUM(orders)}}{\text{COUNT(orders)}}$.
 
+---
+
+## Plan wykresów i analiza wyników (Dane treningowe)
+
+Wszystkie poniższe wykresy, tabele i wnioski analityczne zostały opracowane **wyłącznie w oparciu o zbiór treningowy** ([`data/processed/orders_train.csv`](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/data/processed/orders_train.csv) oraz wygenerowany z niego raport [`reports/by_weekday.csv`](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/by_weekday.csv)). W analizie nie wykorzystano danych ze zbioru walidacyjnego ani testowego.
+
+* **Okres analizy:** `2024-01-01 – 2024-09-08` (252 dni kalendarzowe)
+* **Liczba ważnych obserwacji:** $N = 248$ dni (4 dni z pustą wartością `NaN` w kolumnie `orders` zostały pominięte w obliczeniach i na wykresach)
+* **Jednostka zamówień:** sztuki `[szt.]`
+* **Jednostka czasu/częstości:** dni `[dni]`
+
+---
+
+### 1. Pytanie: *„Jak liczba zamówień zmieniała się w czasie?”*
+- **Typ wykresu:** **Wykres liniowy**
+- **Plik wyjściowy:** [`reports/orders_by_date.png`](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/orders_by_date.png)
+- **Tytuł:** *„Zmiana liczby zamówień w czasie (2024-01-01 – 2024-09-08)”*
+- **Podtytuł:** *„[Zbiór treningowy: N = 248 ważnych dni | 4 braki NaN pominięte]”*
+- **Oś pozioma (X):** **Data [rrrr-mm]** (uporządkowany chronologicznie dzienny szereg czasowy)
+- **Oś pionowa (Y):** **Liczba zamówień [szt.]**
+- **Źródło danych:** Oczyszczony zbiór treningowy (`df_cleaned['orders']`)
+
+#### Tabela źródłowa – Podsumowanie dynamiki miesięcznej:
+| Miesiąc | Dni ogółem | Ważne dni ($N$) | Braki (`NaN`) | Średnia zamówień [szt.] | Min [szt.] | Max [szt.] |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| `2024-01` | 31 | 31 | 0 | 83.29 | 38.0 | 126.0 |
+| `2024-02` | 29 | 28 | 1 | 82.25 | 49.0 | 123.0 |
+| `2024-03` | 31 | 30 | 1 | 81.33 | 44.0 | 126.0 |
+| `2024-04` | 30 | 30 | 0 | 84.47 | 43.0 | 123.0 |
+| `2024-05` | 31 | 30 | 1 | 85.47 | 52.0 | 138.0 |
+| `2024-06` | 30 | 30 | 0 | 82.37 | 42.0 | 131.0 |
+| `2024-07` | 31 | 31 | 0 | 88.00 | 62.0 | 132.0 |
+| `2024-08` | 31 | 30 | 1 | 87.50 | 55.0 | 137.0 |
+| `2024-09` | 8 | 8 | 0 | 87.00 | 57.0 | 130.0 |
+| **Razem** | **252** | **248** | **4** | **84.41** | **38.0** | **138.0** |
+
+#### Wnioski analityczne:
+- **Podsumowanie (Co można odczytać vs Czego nie można stwierdzić):**
+  - *Co można odczytać:* Wykres przedstawia wyraźną, regularną cykliczność tygodniową ze szczytami i dołkami w przedziale od 38 do 138 zamówień, przy zachowaniu stabilnego średniomiesięcznego poziomu popytu (81–88 szt./dzień).
+  - *Czego nie można stwierdzić:* Przebieg linii szeregu czasowego nie pozwala jednoznacznie wskazać bezpośrednich przyczyn poszczególnych skoków sprzedaży (np. wpływu pogody czy konkretnych emisji reklam), ani nie dowodzi, że identyczny rytm utrzyma się poza okresem treningowym.
+- **Obserwacja (fakty empiryczne):** Dzienna liczba zamówień w całym okresie waha się od 38.0 do 138.0 sztuk. Na wykresie występuje regularna cykliczność tygodniowa w postaci powtarzających się fal. Poziom średniomiesięczny jest stabilny i wynosi od 81.33 do 88.00 szt./dzień. Cztery braki danych są pominięte i nie powodują spadku linii do zera.
+- **Interpretacja (wnioski biznesowe):** Wolumen zamówień wykazuje silną regularność tygodniową przy stabilnym popycie bazowym przez cały rok. Działalność operacyjna sklepu charakteryzuje się przewidywalnym rytmem, bez gwałtownego trendu wzrostowego ani zapaści w badanym okresie treningowym.
+- **Czego dane NIE dowodzą (granice wnioskowania):** Sam przebieg linii nie dowodzi, czy szczyty wynikają wyłącznie z zachowań konsumenckich w weekendy, czy z nakładania się kampanii promocyjnych. Nie dowodzi również, że poziom zamówień utrzyma się w kolejnych miesiącach poza okresem treningowym (np. w Q4).
+
+---
+
+### 2. Pytanie: *„Który dzień tygodnia miał najwyższą średnią?”*
+- **Typ wykresu:** **Wykres słupkowy (bar chart)**
+- **Plik wyjściowy:** [`reports/orders_by_weekday.png`](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/orders_by_weekday.png)
+- **Tytuł:** *„Średnia liczba zamówień według dnia tygodnia (2024-01-01 – 2024-09-08)”*
+- **Podtytuł:** *„[Zbiór treningowy: N = 248 ważnych dni | Średnia z pominięciem NaN | Oś Y od 0]”*
+- **Oś pozioma (X):** **Dni od poniedziałku do niedzieli z liczbą ważnych dni ($N$) pod słupkami**
+- **Oś pionowa (Y):** **Średnia liczba zamówień [szt.]** (rozpoczynająca się sztywno od zera `0.0`)
+- **Źródło danych:** Raport zagregowany [`reports/by_weekday.csv`](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/by_weekday.csv)
+
+#### Tabela źródłowa ([`reports/by_weekday.csv`](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/by_weekday.csv)):
+| Grupa | Dni ogółem (`total_days`) | Ważne dni (`valid_orders_days`) | Suma zamówień (`sum_orders`) [szt.] | Średnia (`avg_orders`) [szt.] |
+| :---: | :---: | :---: | :---: | :---: |
+| **poniedziałek** | 36 | 35 | 2545.0 | 72.71 |
+| **wtorek** | 36 | 34 | 2629.0 | 77.32 |
+| **środa** | 36 | 36 | 2692.0 | 74.78 |
+| **czwartek** | 36 | 35 | 2553.0 | 72.94 |
+| **piątek** | 36 | 36 | 3340.0 | 92.78 |
+| **sobota** | 36 | 36 | 3787.0 | **105.19** (maksimum) |
+| **niedziela** | 36 | 36 | 3387.0 | 94.08 |
+
+#### Weryfikacja spójności słupka poniedziałku z reports/by_weekday.csv:
+- **Wartość słupka poniedziałku (średnia):** **72.71 szt.** (odpowiada kolumnie `avg_orders` w pliku [`reports/by_weekday.csv`](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/by_weekday.csv)).
+- **Liczba ważnych dni pomiarowych pod słupkiem:** **35 dni** (odpowiada kolumnie `valid_orders_days` w pliku [`reports/by_weekday.csv`](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/by_weekday.csv)).
+- *Rachunek kontrolny:* W okresie treningowym występuje łącznie 36 poniedziałków (`total_days = 36`), w tym 1 dzień z brakiem danych (`NaN`). Średnia powstała z podzielenia sumy zamówień przez ważne dni: $\frac{2545.0}{35} = 72.7142857... \approx \mathbf{72.71}$, co potwierdza 100% zgodności wykresu z plikiem raportu.
+
+#### Wnioski analityczne:
+- **Podsumowanie (Co można odczytać vs Czego nie można stwierdzić):**
+  - *Co można odczytać:* Sobota osiąga najwyższą średnią liczbę zamówień (105.19 szt.), wyraźnie przewyższając dni robocze od poniedziałku do czwartku, które utrzymują stabilny poziom 72–77 zamówień dziennie.
+  - *Czego nie można stwierdzić:* Duża średnia w sobotę nie oznacza, że każda sobota ma najwięcej zamówień w danym tygodniu (występuje naturalna zmienność losowa), ani nie dowodzi, że sam dzień tygodnia jest jedyną przyczyną wyższej sprzedaży bez udziału np. kampanii promocyjnych.
+- **Obserwacja (fakty empiryczne):** Dniem o najwyższej średniej liczbie zamówień jest **sobota** ze średnią **105.19 szt.** ($N = 36$). Na drugim miejscu plasuje się niedziela (94.08 szt., $N = 36$), a na trzecim piątek (92.78 szt., $N = 36$). Dni robocze od poniedziałku do czwartku notują zbliżone, niższe średnie (72.71–77.32 szt.). Średnie obliczono dzieląc `sum_orders` przez liczbę ważnych dni $N$, z pominięciem braków.
+- **Interpretacja (wnioski biznesowe):** Weekend (zwłaszcza sobota) generuje najwyższy popyt. Klienci najchętniej składają zamówienia w dni wolne od pracy oraz w piątkowe popołudnia, co czyni weekend kluczowym okresem dla planowania przepustowości operacyjnej i obsługi wysyłek.
+- **Czego dane NIE dowodzą (granice wnioskowania):** Sama wysoka średnia w soboty nie dowodzi, że konsumenci kupują więcej wyłącznie z powodu dnia tygodnia. Dane nie wykluczają, że w soboty częściej kierowano ruch z kampanii promocyjnych (`promo = 1`). Nie ma też dowodu na to, że przeniesienie budżetu reklamowego na poniedziałki podniosłoby poniedziałkową sprzedaż do poziomu sobotniego.
+
+#### Eksperyment metodologiczny: Porównanie wariantu z osią od zera z wariantem uciętym (Dlaczego oś słupków musi zaczynać się od zera?):
+W ramach analizy zbadano roboczy wariant wykresu z osią zaczynającą się powyżej zera (od poziomu `65 szt.` – plik demonstracyjny [`reports/orders_by_weekday_truncated_demo.png`](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/orders_by_weekday_truncated_demo.png)):
+- **Wariant z osią od zera (właściwy raportowy – [`reports/orders_by_weekday.png`](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/orders_by_weekday.png)):** Wysokość słupka soboty ($105.19$) względem poniedziałku ($72.71$) jest proporcjonalna do rzeczywistego stosunku wartości: $\frac{105.19}{72.71} \approx 1.45$ (sobota jest o ok. $45\%$ wyższa).
+- **Wariant roboczy z osią od 65 szt. (ucięty – [`reports/orders_by_weekday_truncated_demo.png`](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/orders_by_weekday_truncated_demo.png)):** Widoczna wysokość słupka poniedziałku nad osią wynosi $72.71 - 65 = 7.71$, a słupka soboty $105.19 - 65 = 40.19$. Stosunek widocznych wysokości wynosi $\frac{40.19}{7.71} \approx \mathbf{5.21}$. Sobota sprawia mylne, zmanipulowane wrażenie ponad **5-krotnie większej sprzedaży** niż poniedziałek!
+- **Wniosek i decyzja:** W wykresach słupkowych pole powierzchni i wysokość słupka kodują wielkość bezwzględną. Ucięcie osi zniekształca proporcje i wprowadza odbiorcę w błąd (tzw. efekt lupy / fałszywa skala). **Dlatego do oficjalnego raportu bezwzględnie pozostawiamy wariant z osią rozpoczynającą się od zera ([`reports/orders_by_weekday.png`](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/orders_by_weekday.png)).**
+
+---
+
+### 3. Pytanie: *„Jak często występowały różne liczby zamówień?”*
+- **Typ wykresu:** **Histogram**
+- **Plik wyjściowy:** [`reports/orders_histogram.png`](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/orders_histogram.png)
+- **Tytuł:** *„Rozkład częstości liczby zamówień (2024-01-01 – 2024-09-08)”*
+- **Podtytuł:** *„[Zbiór treningowy: N = 248 ważnych dni | Średnia: 84.41 szt., Mediana: 85.00 szt.]”*
+- **Oś pozioma (X):** **Przedział liczby zamówień (koszyki co 10 szt.) [szt.]**
+- **Oś pionowa (Y):** **Liczba dni [dni]**
+- **Źródło danych:** Oczyszczony zbiór treningowy (`df_cleaned['orders'].dropna()`, $N = 248$)
+
+#### Tabela źródłowa – Rozkład koszykowy (częstość występowania):
+| Przedział zamówień [szt.] | Od [szt.] | Do [szt.] | Liczba dni [dni] | Udział procentowy |
+| :---: | :---: | :---: | :---: | :---: |
+| `[30, 40)` | 30 | 40 | 1 | 0.40% |
+| `[40, 50)` | 40 | 50 | 9 | 3.63% |
+| `[50, 60)` | 50 | 60 | 22 | 8.87% |
+| `[60, 70)` | 60 | 70 | 31 | 12.50% |
+| `[70, 80)` | 70 | 80 | 42 | 16.94% |
+| `[80, 90)` | 80 | 90 | **43** (moda) | **17.34%** |
+| `[90, 100)` | 90 | 100 | 41 | 16.53% |
+| `[100, 110)` | 100 | 110 | 28 | 11.29% |
+| `[110, 120)` | 110 | 120 | 18 | 7.26% |
+| `[120, 130)` | 120 | 130 | 8 | 3.23% |
+| `[130, 140]` | 130 | 140 | 5 | 2.02% |
+| **Razem** | **30** | **140** | **248** | **100.00%** |
+
+#### Wnioski analityczne:
+- **Podsumowanie (Co można odczytać vs Czego nie można stwierdzić):**
+  - *Co można odczytać:* Rozkład dziennych wolumenów jest symetryczny i jednomodalny wokół średniej 84.41 szt. oraz mediany 85.00 szt., a najczęściej występujący przedział to 80–90 zamówień (43 dni w próbie).
+  - *Czego nie można stwierdzić:* Dzwonowy kształt histogramu nie dowodzi, że dzienne zamówienia są generowane przez czysty rozkład normalny o niezależnych próbach (dane cechuje silna zależność czasowa i cykliczna), ani nie wyklucza wystąpienia w przyszłości nietypowych anomalii rynkowych poza zakresem 30–140 zamówień.
+- **Obserwacja (fakty empiryczne):** Rozkład ma kształt dzwonowy, jest jednomodalny i symetryczny. Najwięcej dni mieści się w przedziale `[80, 90)` zamówień (43 dni, 17.34%). W centralnym paśmie 70–100 zamówień znajduje się aż 126 dni (ponad 50.8% całej próby). Średnia (84.41 szt.) i mediana (85.00 szt.) są niemal identyczne.
+- **Interpretacja (wnioski biznesowe):** Typowy dzień sprzedaży generuje około 85 zamówień. Rozkład o niskiej asymetrii ułatwia planowanie operacyjne – magazyn może przyjąć stałą obsadę dla obsługi 80–90 paczek dziennie, z procedurą elastycznego zwiększania mocy do ok. 140 paczek w dniach o wzmożonym ruchu.
+- **Czego dane NIE dowodzą (granice wnioskowania):** Symetria rozkładu empirycznego nie dowodzi, że proces generujący zamówienia jest czystym rozkładem Gaussa (dane są zależne czasowo i podlegają cyklom tygodniowym). Dane nie wykluczają też wystąpienia w przyszłości zdarzeń ekstremalnych (tzw. grubych ogonów rozkładu), np. podczas awarii infrastruktury lub wyprzedaży sezonowych.
+
+
+
 
 
 
