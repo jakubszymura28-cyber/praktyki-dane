@@ -1,3 +1,99 @@
+# Raport analityczny: Dynamika i struktura zamówień
+
+## 1. Pytania biznesowe i cel analizy
+Niniejszy raport podsumowuje wstępną eksplorację danych sprzedażowych sklepu internetowego. W toku analizy postawiono trzy zasadnicze pytania biznesowe:
+1. **Jak kształtowała się dzienna liczba zamówień w czasie i czy w danych widoczny jest powtarzalny rytm?**
+2. **W które dni tygodnia oraz w jakich okolicznościach (aktywna promocja) średnia sprzedaż osiągała najwyższe wartości?**
+3. **Jak wygląda rozkład dziennej liczby zamówień i co uznajemy za typowy dzień sprzedaży pod kątem planowania operacyjnego?**
+
+---
+
+## 2. Użyte dane
+- **Charakter danych:** W analizie wykorzystano **syntetyczne dane z okresu treningowego** (dane wygenerowane komputerowo na potrzeby ćwiczeń analitycznych, odzwierciedlające typowe zjawiska rynkowe).
+- **Pliki źródłowe:** Oczyszczony zbiór treningowy [`data/processed/orders_train.csv`](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/data/processed/orders_train.csv) oraz lokalna baza SQLite [`data/processed/orders.sqlite`](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/data/processed/orders.sqlite).
+- **Horyzont czasowy:** Od `2024-01-01` do `2024-09-08` (łącznie 252 dni w kalendarzu).
+- **Ważne obserwacje pomiarowe:** W analizie uwzględniono **$N = 248$ ważnych dni**. Cztery dni zawierające brak danych (`NaN`) w kolumnie `orders` zostały wykluczone z obliczeń średnich i wizualizacji (zgodnie z raportem jakości danych).
+- **Czystość metodologiczna:** Dane ze zbioru walidacyjnego oraz testowego pozostały odłożone i nie były analizowane na tym etapie.
+
+---
+
+## 3. Trzy kluczowe wnioski z analizy i wykresy
+
+### Wniosek 1: Najwyższa średnia liczba zamówień przypada na soboty
+Pierwsza analiza dotyczyła różnic w średniej liczbie zamówień w poszczególnych dniach tygodnia.
+
+![Średnia liczba zamówień według dnia tygodnia](orders_by_weekday.png)
+
+- **Wskazanie tabeli i kolumn źródłowych:**
+  - **Plik tabeli:** [`reports/by_weekday.csv`](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/by_weekday.csv)
+  - **Konkretne kolumny:** kolumna **`avg_orders`** (średnia liczba zamówień w danym dniu) oraz kolumna **`valid_orders_days`** (liczba ważnych dni pomiarowych $N$).
+- **Fakty z danych:**
+  - Najwyższą średnią dzienną liczbę zamówień odnotowano w **sobotę**: **105.19 szt.** przy liczbie ważnych dni $N = 36$ (kolumny `avg_orders` i `valid_orders_days`).
+  - Drugim i trzecim dniem pod względem wielkości sprzedaży były niedziela (**94.08 szt.**, $N = 36$) oraz piątek (**92.78 szt.**, $N = 36$).
+  - Najniższą średnią zanotowano w **poniedziałek**: **72.71 szt.** przy $N = 35$ dniach (jeden poniedziałek miał brak danych `NaN`). Dni powszednie (poniedziałek–czwartek) utrzymują zbliżony poziom 72–77 szt./dzień.
+  - Różnica między sobotą a poniedziałkiem wynosi **+32.48 zamówienia dziennie** (średnia w sobotę jest o ok. **44.7% wyższa** niż w poniedziałek). Wykres przedstawia te proporcje rzetelnie dzięki rozpoczęciu osi pionowej od zera.
+- **Granice wnioskowania (unikanie założeń o przyczynowości):**
+  - Wyższa średnia w soboty opisuje stan faktyczny w badanej próbie, ale **nie dowodzi, że sam dzień tygodnia jest jedyną przyczyną wyższych zakupów**. 
+  - Z danych nie wynika, dlaczego klienci zamawiali więcej – sobota mogła zbiegać się z emisją reklam lub akcjami promocyjnymi. Ponadto duża średnia w sobotę nie oznacza, że w każdą pojedynczą sobotę sprzedaż była rekordowa.
+
+---
+
+### Wniosek 2: Dni z aktywną promocją notują wyższy średni wolumen zamówień
+Druga analiza dotyczyła zestawienia sprzedaży w dniach z aktywną kampanią promocyjną oraz bez niej.
+
+![Zmiana liczby zamówień w czasie](orders_by_date.png)
+
+- **Wskazanie tabeli i kolumn źródłowych:**
+  - **Plik tabeli:** [`reports/by_promo.csv`](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/by_promo.csv)
+  - **Konkretne kolumny:** kolumna **`avg_orders`** (średnia liczba zamówień) oraz kolumna **`valid_orders_days`** (liczba ważnych dni pomiarowych) w podziale na grupy flagi `promo`.
+- **Fakty z danych:**
+  - W dniach oznaczonych aktywną promocją (`promo = 1`) średnia liczba zamówień wyniosła **103.47 szt./dzień** dla $N = 51$ dni pomiarowych (kolumny `avg_orders` i `valid_orders_days`).
+  - W dniach bez promocji (`promo = 0`) średnia wyniosła **79.47 szt./dzień** dla $N = 197$ dni pomiarowych.
+  - W dniach promocyjnych zaobserwowano średnio o **+24.00 zamówienia dziennie więcej** (wartość w kolumnie `avg_orders` jest o **+30.2% wyższa** względem dni bez promocji). Na wykresie szeregu czasowego piki sprzedaży regularnie pokrywają się z datami oznaczonymi promocją.
+- **Granice wnioskowania (unikanie założeń o przyczynowości):**
+  - Zaobserwowana różnica **nie uprawnia do stwierdzenia, że promocja bezpośrednio spowodowała wzrost zamówień**.
+  - Z danych wynika jedynie współwystępowanie (korelacja). Kampanie promocyjne mogły być celowo uruchamiane w weekendy, kiedy klienci i tak kupują częściej, albo towarzyszyły im zwiększone wydatki na reklamę (`planned_ad_spend_pln`). Aby zmierzyć czysty wpływ promocji, należałoby przeprowadzić kontrolowany eksperyment (test A/B) lub analizę wieloczynnikową.
+
+---
+
+### Wniosek 3: Rozkład zamówień jest symetryczny i skupiony wokół 85 sztuk
+Trzecia analiza skupiła się na strukturze rozkładu dziennych wolumenów i powtarzalności wyników.
+
+![Rozkład częstości liczby zamówień](orders_histogram.png)
+
+- **Wskazanie tabeli i kolumn źródłowych:**
+  - **Zbiór źródłowy:** [`data/processed/orders_train.csv`](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/data/processed/orders_train.csv)
+  - **Konkretna kolumna:** kolumna **`orders`** (dzienna liczba zamówień w $N = 248$ ważnych obserwacjach, po wyłączeniu braków `NaN`).
+- **Fakty z danych:**
+  - Średnia arytmetyczna (**84.41 szt.**) oraz mediana (**85.00 szt.**) są do siebie bardzo zbliżone, co wskazuje na symetryczny, jednomodalny (posiadający jeden główny szczyt) rozkład zamówień.
+  - Najczęściej występującym zakresem wielkości sprzedaży (modą rozkładu) jest przedział **80–90 szt.**, który odnotowano w **43 dniach** (17.3% wszystkich badanych dni).
+  - W wąskim, centralnym przedziale od 70 do 100 zamówień mieści się ponad połowa wszystkich dni obserwacji (**126 dni z 248**, czyli 50.8%).
+- **Granice wnioskowania:**
+  - Symetryczny kształt wykresu opisuje dotychczasową historię sprzedaży w próbie treningowej, ale **nie dowodzi, że proces ten podlega idealnemu rozkładowi teoretycznemu**, ani nie wyklucza wystąpienia w przyszłości zdarzeń nietypowych (np. awarii systemu lub niespodziewanego braku towaru), które wykroczyłyby poza dotychczasowy zakres od 38 do 138 zamówień.
+
+---
+
+## 4. Ograniczenia przeprowadzonej analizy
+1. **Charakter danych:** Wszystkie analizowane dane są **danymi syntetycznymi**. Mogą one upraszczać rzeczywiste mechanizmy rynkowe i zachowania klientów.
+2. **Korelacja to nie przyczynowość:** Proste porównania średnich w grupach pokazują współwystępowanie zjawisk, lecz nie wyjaśniają ich bezpośrednich przyczyn. Na wyższą sprzedaż mogą jednocześnie wpływać: dzień tygodnia, promocja, budżet reklamowy oraz sezonowość miesięczna.
+3. **Pominięcie braków danych:** Z analizy wyłączono 4 dni z wartościami `NaN` w kolumnie `orders` (w tym 2 wartości ujemne zidentyfikowane podczas kontroli jakości). Chociaż stanowi to zaledwie 1.6% zbioru, każdy brak danych niesie ze sobą pewien ubytek informacji.
+4. **Horyzont czasowy:** Zbiór treningowy kończy się 8 września 2024 r., co oznacza, że wnioski nie obejmują specyfiki czwartego kwartału (np. wyprzedaży Black Friday i okresu przedświątecznego).
+
+---
+
+## 5. Następne kroki
+1. **Analiza wielowymiarowa:** Zastosowanie modelu regresji liniowej w celu rozdzielenia wpływu dnia tygodnia od wpływu promocji i wydatków na reklamę.
+2. **Prognozowanie i walidacja:** Zbudowanie bazowego modelu prognozowania zapotrzebowania na danych treningowych oraz zweryfikowanie jego trafności na nienaruszonym zbiorze walidacyjnym.
+3. **Wdrożenie operacyjne:** Wykorzystanie wiedzy o typowym przedziale sprzedaży (80–90 paczek dziennie) oraz szczycie sobotnim (ok. 105 paczek) do racjonalnego planowania grafików pracy w magazynie.
+
+---
+
+# Notatki i sprawdzenia (Dni 5–7)
+
+Poniżej zachowano pełną, roboczą dokumentację kontrolną, zapytania SQL, testy spójności i tabele referencyjne wypracowane we wcześniejszych etapach prac.
+
+---
+
 # Notatka analityczna: Pytania biznesowe i odpowiedzi z bazy SQLite
 
 Dokument zawiera zdefiniowane pytania biznesowe, zapytania SQL, uzyskane odpowiedzi z lokalnej bazy SQLite (`data/processed/orders.sqlite`), wyniki walidacji typów danych i wartości `NULL`, ćwiczenie na osobnej tabeli oraz potwierdzenie spójności z raportem jakości danych.

@@ -167,4 +167,47 @@ Do załadowania oczyszczonych danych do lokalnej bazy SQLite oraz wykonania zapy
      - 5 dni z największą liczbą zamówień (`orders`),
      - Porównanie `COUNT(*)` i `COUNT(orders)` (badanie braków).
 
+### 7. Zalecana kolejność uruchomienia potoku danych (Pipeline Workflow)
+
+Aby zagwarantować pełną powtarzalność, spójność liczb i poprawność generowanych raportów, potok danych należy uruchamiać w następującej kolejności:
+
+```text
+[1. src/prepare_data.py]  ──►  [2. src/query_data.py]  ──►  [3. notebooks/02_analysis.ipynb]
+(Czyszczenie danych CSV)      (Baza SQLite i agregacje)       (Wizualizacje i asercje pandas vs SQL)
+```
+
+#### Krok 1: Przygotowanie i czyszczenie danych treningowych
+* **Polecenie:**
+  ```powershell
+  python src/prepare_data.py
+  ```
+* **Dane wejściowe:** [data/raw/orders_train_raw.csv](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/data/raw/orders_train_raw.csv)
+* **Plik wynikowy:** [data/processed/orders_train.csv](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/data/processed/orders_train.csv)
+* **Obsługa ścieżek i brakującego pliku CSV:**
+  - Skrypt dynamicznie wspiera uruchamianie zarówno z głównego katalogu repozytorium (`data/raw/...`), jak i z podkatalogów roboczych (np. `../data/raw/...`).
+  - W przypadku braku pliku źródłowego skrypt rzuca jednoznaczny wyjątek `FileNotFoundError: Nie znaleziono pliku źródłowego: <ścieżka>`, uniemożliwiając ciche kontynuowanie z błędnymi danymi.
+  - Przy uszkodzonym lub pustym pliku CSV zgłaszany jest wyjątek `ValueError` z precyzyjnym komunikatem.
+
+#### Krok 2: Załadowanie bazy danych SQLite i zapytania analityczne
+* **Polecenie:**
+  ```powershell
+  python src/query_data.py
+  ```
+* **Działanie:**
+  - Wczytuje wyczyszczony zbiór do bazy [data/processed/orders.sqlite](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/data/processed/orders.sqlite).
+  - Wykonuje zapytania analityczne i generuje podsumowania do plików CSV w katalogu `reports/`:
+    - [reports/by_promo.csv](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/by_promo.csv) – sprzedaż w dniach z promocją i bez,
+    - [reports/by_month.csv](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/by_month.csv) – dynamika miesięczna,
+    - [reports/by_weekday.csv](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/by_weekday.csv) – podsumowanie według dni tygodnia.
+  - Wyznacza bazowe wartości kontrolne SQL: **248 ważnych dni** i **sumę 20 933.0 zamówień**.
+
+#### Krok 3: Analiza eksploracyjna i raportowanie w notebooku
+* **Plik:** [notebooks/02_analysis.ipynb](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/notebooks/02_analysis.ipynb)
+* **Instrukcja uruchomienia:**
+  1. Otwórz notatnik w Antigravity.
+  2. Kliknij **Restart Kernel**, a następnie **Run All** (uruchomienie wszystkich komórek od góry do dołu).
+* **Zawartość i kontrole:**
+  - Notatnik wywołuje `src/prepare_data.py`, zachowując reguły czyszczenia w jednym skrypcie.
+  - W sekcji kontrolnej wykonuje formalne porównanie pandas vs SQL potwierdzające 100% zgodności (liczba obserwacji: 248, suma zamówień: 20 933.0) za pomocą automatycznych asercji (`assert`).
+  - Prezentuje tabele podsumowujące oraz generuje 3 oficjalne wykresy do katalogu `reports/` ([orders_by_date.png](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/orders_by_date.png), [orders_by_weekday.png](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/orders_by_weekday.png), [orders_histogram.png](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/orders_histogram.png)) wraz z wariantem demonstracyjnym uciętej osi ([orders_by_weekday_truncated_demo.png](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/orders_by_weekday_truncated_demo.png)).
 
