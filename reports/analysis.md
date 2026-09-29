@@ -75,7 +75,7 @@ Trzecia analiza skupiła się na strukturze rozkładu dziennych wolumenów i pow
 
 ## 4. Ograniczenia przeprowadzonej analizy
 1. **Charakter danych:** Wszystkie analizowane dane są **danymi syntetycznymi**. Mogą one upraszczać rzeczywiste mechanizmy rynkowe i zachowania klientów.
-2. **Korelacja to nie przyczynowość:** Proste porównania średnich w grupach pokazują współwystępowanie zjawisk, lecz nie wyjaśniają ich bezpośrednich przyczyn. Na wyższą sprzedaż mogą jednocześnie wpływać: dzień tygodnia, promocja, budżet reklamowy oraz sezonowość miesięczna.
+2. **Korelacja to nie przyczynowość:** To, że promocja i wysoka sprzedaż występują w te same dni, nie oznacza, że promocja sama wywołała ten wzrost – na wyższą liczbę zamówień mógł równolegle wpłynąć weekend lub wyższy budżet reklamowy.
 3. **Pominięcie braków danych:** Z analizy wyłączono 4 dni z wartościami `NaN` w kolumnie `orders` (w tym 2 wartości ujemne zidentyfikowane podczas kontroli jakości). Chociaż stanowi to zaledwie 1.6% zbioru, każdy brak danych niesie ze sobą pewien ubytek informacji.
 4. **Horyzont czasowy:** Zbiór treningowy kończy się 8 września 2024 r., co oznacza, że wnioski nie obejmują specyfiki czwartego kwartału (np. wyprzedaży Black Friday i okresu przedświątecznego).
 
