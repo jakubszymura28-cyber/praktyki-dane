@@ -304,6 +304,18 @@ Do weryfikacji odporności potoku uczenia i ochrony przed wyciekiem danych słu�
    * **Próba 3 (Wspólna implementacja przygotowania cech):** Weryfikuje determinizm przekształcenia cech za pomocą wspólnego obiektu `build_preprocessor()` z modułu `src/train.py`.
    * **Bezpieczeństwo danych:** Testy operują na katalogach tymczasowych (`tempfile`) i nie modyfikują oryginalnych zbiorów danych.
 
+### 15. Zamrożenie modeli i dogłębna analiza błędów (Dzień 15-16)
+W ramach finalizacji etapu modelowania utrwalono wybrane modele oraz przeprowadzono analizę błędów:
+* **Zamrożone modele produkcyjne w katalogu `models/`:**
+  - `models/baseline.joblib` – zamrożony model odniesienia `DummyRegressor(strategy='median')`.
+  - `models/selected_pipeline.joblib` – zamrożony potok produkcyjny `Pipeline(ColumnTransformer + DecisionTreeRegressor(max_depth=3, random_state=42))`.
+  - **Weryfikacja po wczytaniu:** Skrypt `src/train.py` automatycznie ładuje oba obiekty za pomocą `joblib.load()` i asercją potwierdza 100% numeryczną spójność prognoz.
+* **Analiza błędów:**
+  - [reports/validation_errors.csv](reports/validation_errors.csv) – lista 84 dni posortowana według błędu predykcji drzewa.
+  - Największa redukcja błędu nastąpiła w soboty (spadek błędu MAE z 28.83 do 12.98 szt./dzień).
+  - Względna redukcja błędu MAE wyniosła **26.30%** (spadek z 16.21 do 11.95 szt./dzień na walidacji).
+
+
 
 
 

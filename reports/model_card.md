@@ -193,13 +193,53 @@ W potoku [src/train.py](src/train.py) zintegrowano model kandydujący `DecisionT
 > **⚠️ Rygor ewaluacji:** Tabela obejmuje wyłącznie zbiory `train` i `validation`. **Wyników zbioru testowego jeszcze nie ma** – zbiór testowy pozostaje nienaruszony do końcowej ewaluacji.
 
 
-### 10.3. Wnioski z porównania modeli
-1. **Redukcja błędu bezwzględnego:**
-   Model drzewa decyzyjnego osiągnął na oknie walidacyjnym błąd **MAE = 11.95 szt./dzień**, co oznacza spadek błędu o **4.26 szt./dzień** (poprawa o ~26.3%) względem modelu bazowego (**16.21 szt./dzień**).
-2. **Zachowanie uogólnienia (brak overfittingu):**
-   Błąd walidacyjny drzewa ($11.95$) jest bardzo zbliżony do błędu treningowego ($11.11$), co potwierdza, że ograniczenie głębokości drzewa do `max_depth=3` skutecznie uchroniło model przed nadmiernym dopasowaniem do szumu w danych uczących.
-3. **Integralność danych:**
-   Wyniki uzyskano bez jakichkolwiek modyfikacji danych surowych ani arbitralnych zmian w regułach czyszczenia – porównanie obu modeli przeprowadzono w 100% rzetelnie na ustalonym oknie walidacyjnym.
+### 10.3. Rachunek procentowej poprawy i interpretacja biznesowa
+- **Wartości źródłowe z [reports/metrics.csv](metrics.csv):**
+  - $\text{MAE}_{\text{baseline}}$ (walidacja): **16.2143 szt./dzień**
+  - $\text{MAE}_{\text{drzewo d=3}}$ (walidacja): **11.9503 szt./dzień**
+- **Różnica w zamówieniach:**
+  $$\Delta \text{MAE} = 16.2143 - 11.9503 = \mathbf{4.2640\text{ szt./dzień}}$$
+- **Obliczenie procentowej poprawy:**
+  $$\frac{\text{MAE}_{\text{baseline}} - \text{MAE}_{\text{drzewo}}}{\text{MAE}_{\text{baseline}}} \times 100\% = \frac{16.2143 - 11.9503}{16.2143} \times 100\% = \frac{4.2640}{16.2143} \times 100\% = \mathbf{26.30\%}$$
+
+> **Własna interpretacja analityczna:**  
+> **MAE to średni błąd predykcji wyrażony w fizycznych jednostkach popytu (zamówieniach na dzień), natomiast obliczona wartość 26.30% stanowi względną redukcję tego błędu (zmniejszenie przeciętnej pomyłki o ponad 4 sztuki na dobę), a NIE odsetek idealnie trafionych prognoz ani wskaźnik „accuracy”.** W zadaniu regresji ciągłej przewidujemy liczbę paczek, dlatego miara procentowa informuje o skali ograniczenia niedoszacowań i przeszacowań magazynowych.
+
+### 10.4. Rozkład MAE według dnia tygodnia na walidacji (84 dni)
+W całym 84-dniowym oknie walidacyjnym każdy dzień tygodnia występuje **dokładnie 12 razy** ($12 \times 7 = 84$ dni). Zestawienie błędów wykazuje kluczowe źródła przewagi modelu kandydującego:
+
+| Dzień tygodnia (`day_of_week`) | Liczba dni na walidacji | MAE Baseline (`Dummy`) | MAE Drzewo (`d=3`) | Różnica MAE | Wniosek biznesowy |
+|:---:|:---:|:---:|:---:|:---:|---|
+| **Poniedziałek (0)** | 12 | 10.67 szt. | 10.91 szt. | +0.24 szt. | Zbliżone błędy na początku tygodnia |
+| **Wtorek (1)** | 12 | 14.67 szt. | 10.06 szt. | **-4.61 szt.** | Wyraźna redukcja błędu |
+| **Środa (2)** | 12 | 16.58 szt. | 12.12 szt. | **-4.46 szt.** | Lepsze dopasowanie środka tygodnia |
+| **Czwartek (3)** | 12 | 13.42 szt. | 10.37 szt. | **-3.05 szt.** | Stabilniejsza prognoza |
+| **Piątek (4)** | 12 | 13.67 szt. | 13.18 szt. | **-0.49 szt.** | Porównywalna jakość |
+| **Sobota (5)** | 12 | 28.83 szt. | 12.98 szt. | **-15.85 szt.** | **Kluczowa eliminacja potężnego błędu stałej mediany w weekend!** |
+| **Niedziela (6)** | 12 | 15.67 szt. | 14.04 szt. | **-1.63 szt.** | Lepsze uchwycenie niedzielnego popytu |
+
+Największe odchylenia zarejestrowano w osobnym raporcie [reports/validation_errors.csv](validation_errors.csv) (posortowanym według błędu bezwzględnego drzewa).
+
+### 10.5. Eksperymentalny wariant głębszego drzewa (`max_depth=5`)
+Zgodnie z procedurą sprawdzono wyłącznie jeden dodatkowy wariant hiperparametru na tych samych 248 wierszach treningu i 84 walidacji:
+- `max_depth=5, random_state=42`:
+  * MAE trening (248 dni): **8.3212 szt./dzień**
+  * MAE walidacja (84 dni): **11.1029 szt./dzień**
+  * Procentowa redukcja błędu vs Baseline: **31.52%**
+- **Uzasadnienie ostatecznego wyboru `max_depth=3`:**
+  Model `max_depth=3` cechuje się znacznie mniejszą luką generalizacji ($\text{MAE}_{\text{val}} - \text{MAE}_{\text{train}} = 11.95 - 11.11 = 0.84\text{ szt.}$) w porównaniu do wariantu `max_depth=5` ($11.10 - 8.32 = 2.78\text{ szt.}$). Drzewo o głębokości 3 jest bezpieczniejsze w warunkach produkcyjnych, wysoce interpretowalne i odporne na przeuczenie do szumu w danych uczących.
+
+### 10.6. Zamrożenie modeli (Serialization) i ograniczenia
+Ostatecznie wybrane modele zostały seryjnie utrwalone w formacie binarnym w katalogu `models/`:
+1. [models/baseline.joblib](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/models/baseline.joblib) – zamrożony model bazowy `DummyRegressor(strategy='median')`.
+2. [models/selected_pipeline.joblib](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/models/selected_pipeline.joblib) – zamrożony pełny potok produkcyjny `Pipeline(preprocessor + DecisionTreeRegressor(max_depth=3, random_state=42))`.
+
+- **Weryfikacja integralności:** Po ponownym załadowaniu obiektów przez `joblib.load()` wygenerowane predykcje walidacyjne były w 100% numerycznie zgodne z predykcjami pierwotnymi (`assert np.allclose(...)`).
+- **Ograniczenia produkcyjne:**
+  - Model prognozuje popyt wyłącznie w oparciu o `day_of_week`, planowaną promocję `promo` oraz zatwierdzony budżet reklamowy `planned_ad_spend_pln`.
+  - Nie uwzględnia nietypowych anomalii makroekonomicznych ani nagłych awarii serwisu.
+  - Zbiór testowy pozostaje nienaruszony do momentu ostatecznego odbioru projektu.
+
 
 
 

@@ -1,6 +1,6 @@
 """Moduł do przygotowania potoku cech, transformacji i treningu modeli prognozowania popytu.
 
-Dni 11, 12, 13:
+Dni 11-15:
 - Pipeline cech (ColumnTransformer):
   * SimpleImputer(strategy='median') dla planned_ad_spend_pln
   * OneHotEncoder dla day_of_week
@@ -8,17 +8,23 @@ Dni 11, 12, 13:
 - Uczenie na 248 wierszach treningowych z poprawnym celem (orders.notna())
 - Cechy wejściowe: day_of_week, promo, planned_ad_spend_pln
   (wykluczone: visits, revenue_pln, date, orders_invalid)
+- Zabezpieczenie przed Data Leakage: funkcja validate_feature_list
 - Model bazowy: DummyRegressor(strategy='median') -> stała 85.0 szt.
-- Model kandydujący: DecisionTreeRegressor(max_depth=3, random_state=42) w pełnym Pipeline
-- Pomiar czasu trenowania i predykcji
+- Wybrany model kandydujący: DecisionTreeRegressor(max_depth=3, random_state=42) w pełnym Pipeline
+- Zapis zamrożonych modeli:
+  * models/baseline.joblib
+  * models/selected_pipeline.joblib
+- Weryfikacja wczytania modeli i spójności predykcji (joblib.load)
 - Eksport raportów:
-  * reports/metrics.csv (MAE, czas działania i opis dla obu modeli na train i val)
-  * reports/validation_predictions.csv (84 daty z prognozami baseline i drzewa)
+  * reports/metrics.csv (metryki MAE, parametry i wersje danych)
+  * reports/validation_predictions.csv (84 daty z prognozami obu modeli)
+  * reports/validation_errors.csv (największe błędy na walidacji)
 """
 
 from pathlib import Path
 import time
 from typing import Tuple, Dict, Any
+import joblib
 import numpy as np
 import pandas as pd
 from sklearn.compose import ColumnTransformer
@@ -34,6 +40,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 TRAIN_PROCESSED_PATH = BASE_DIR / "data" / "processed" / "orders_train.csv"
 VAL_PROCESSED_PATH = BASE_DIR / "data" / "processed" / "orders_validation.csv"
 REPORTS_DIR = BASE_DIR / "reports"
+MODELS_DIR = BASE_DIR / "models"
 
 # Definicja kolumn zgodnie z Kartą Modelu (reports/model_card.md)
 FEATURE_COLUMNS = ["day_of_week", "promo", "planned_ad_spend_pln"]
@@ -112,7 +119,6 @@ def prepare_training_data(
     X = df_valid[feature_cols].copy()
     y = df_valid[TARGET_COLUMN].copy()
 
-
     budget_series = df_valid["planned_ad_spend_pln"]
     budget_non_null = int(budget_series.notna().sum())
     budget_nulls = int(budget_series.isna().sum())
@@ -126,7 +132,7 @@ def prepare_training_data(
         "budget_nulls": budget_nulls,
         "independent_budget_median": independent_budget_median,
         "orders_median": orders_median,
-        "feature_names": FEATURE_COLUMNS,
+        "feature_names": feature_cols,
         "target_name": TARGET_COLUMN,
         "excluded_features": EXCLUDED_COLUMNS,
     }
@@ -183,9 +189,9 @@ def fit_and_audit_pipeline() -> Dict[str, Any]:
 
 
 def train_and_evaluate_all_models() -> Dict[str, Any]:
-    """Trenuje i ocenia zarówno model bazowy (DummyRegressor), jak i drzewo decyzyjne (DecisionTreeRegressor).
+    """Trenuje i ocenia zarówno model bazowy (DummyRegressor), jak i wybrany model (DecisionTreeRegressor max_depth=3).
 
-    Mierzy precyzyjny czas fit i predict oraz zapisuje zintegrowane raporty do reports/.
+    Mierzy czas, eksportuje raporty metryk i predykcji oraz zapisuje i weryfikuje zamrożone modele (.joblib).
     """
     X_train, y_train, train_stats = prepare_training_data()
     X_val, y_val, df_val = load_validation_data()
@@ -212,35 +218,55 @@ def train_and_evaluate_all_models() -> Dict[str, Any]:
     base_val_mae = float(mean_absolute_error(y_val, base_val_preds))
 
     # =========================================================================
-    # MODEL 2: KANDYDUJĄCY (Pipeline: ColumnTransformer + DecisionTreeRegressor)
+    # MODEL 2: WYBRANY KANDYDUJĄCY (Pipeline: ColumnTransformer + DecisionTreeRegressor max_depth=3)
     # =========================================================================
     preprocessor = build_preprocessor()
     tree_regressor = DecisionTreeRegressor(max_depth=3, random_state=42)
-    tree_pipeline = Pipeline([
+    selected_pipeline = Pipeline([
         ("preprocessor", preprocessor),
         ("regressor", tree_regressor),
     ])
 
-    # Pomiar czasu dopasowania (fit): obejmuje przygotowanie cech + budowę drzewa
     t0_tree_fit = time.perf_counter()
-    tree_pipeline.fit(X_train, y_train)
+    selected_pipeline.fit(X_train, y_train)
     t_tree_fit = time.perf_counter() - t0_tree_fit
 
-    # Pomiar czasu predykcji na treningu
     t0_tree_pred_tr = time.perf_counter()
-    tree_train_preds = tree_pipeline.predict(X_train)
+    tree_train_preds = selected_pipeline.predict(X_train)
     t_tree_pred_tr = time.perf_counter() - t0_tree_pred_tr
 
-    # Pomiar czasu predykcji na walidacji: obejmuje transformację cech walidacji + przejście przez drzewo
     t0_tree_pred_val = time.perf_counter()
-    tree_val_preds = tree_pipeline.predict(X_val)
+    tree_val_preds = selected_pipeline.predict(X_val)
     t_tree_pred_val = time.perf_counter() - t0_tree_pred_val
 
     tree_train_mae = float(mean_absolute_error(y_train, tree_train_preds))
     tree_val_mae = float(mean_absolute_error(y_val, tree_val_preds))
 
-    # Asercja równej liczby prognoz walidacji (84 dni dla obu modeli)
     assert len(base_val_preds) == 84 and len(tree_val_preds) == 84, "Błąd: Liczba predykcji walidacyjnych != 84!"
+
+    # =========================================================================
+    # ZAPIS I WERYFIKACJA MODELI (.joblib)
+    # =========================================================================
+    resolved_models_dir = resolve_path(MODELS_DIR)
+    resolved_models_dir.mkdir(parents=True, exist_ok=True)
+
+    baseline_path = resolved_models_dir / "baseline.joblib"
+    selected_pipeline_path = resolved_models_dir / "selected_pipeline.joblib"
+
+    joblib.dump(baseline_model, baseline_path)
+    joblib.dump(selected_pipeline, selected_pipeline_path)
+
+    # Weryfikacja po wczytaniu z dysku
+    loaded_baseline = joblib.load(baseline_path)
+    loaded_pipeline = joblib.load(selected_pipeline_path)
+
+    reloaded_base_preds = loaded_baseline.predict(X_val)
+    reloaded_tree_preds = loaded_pipeline.predict(X_val)
+
+    if not np.allclose(base_val_preds, reloaded_base_preds):
+        raise ValueError("Błąd weryfikacji: prognozy wczytanego baseline.joblib różnią się od oryginalnych!")
+    if not np.allclose(tree_val_preds, reloaded_tree_preds):
+        raise ValueError("Błąd weryfikacji: prognozy wczytanego selected_pipeline.joblib różnią się od oryginalnych!")
 
     # =========================================================================
     # ZAPIS RAPORTÓW
@@ -306,11 +332,24 @@ def train_and_evaluate_all_models() -> Dict[str, Any]:
     preds_path = resolved_reports_dir / "validation_predictions.csv"
     df_val_preds.to_csv(preds_path, index=False, encoding="utf-8")
 
+    # 3. reports/validation_errors.csv (Największe błędy na walidacji)
+    df_errors = df_val_preds.copy()
+    df_errors["day_of_week"] = df_val["day_of_week"]
+    df_errors["promo"] = df_val["promo"]
+    df_errors["planned_ad_spend_pln"] = df_val["planned_ad_spend_pln"]
+    df_errors_sorted = df_errors.sort_values(by="abs_error_tree", ascending=False).reset_index(drop=True)
+    errors_path = resolved_reports_dir / "validation_errors.csv"
+    df_errors_sorted.to_csv(errors_path, index=False, encoding="utf-8")
+
     return {
         "metrics_df": df_metrics,
         "preds_df": df_val_preds,
+        "errors_df": df_errors_sorted,
         "metrics_path": metrics_path,
         "preds_path": preds_path,
+        "errors_path": errors_path,
+        "baseline_model_path": baseline_path,
+        "selected_model_path": selected_pipeline_path,
         "base_val_mae": base_val_mae,
         "tree_val_mae": tree_val_mae,
         "base_train_mae": base_train_mae,
@@ -322,14 +361,12 @@ def train_and_evaluate_all_models() -> Dict[str, Any]:
 
 def main() -> None:
     print("=" * 80)
-    print("TRENING I EWALUACJA MODELI (src/train.py) - DZIEŃ 11, 12, 13, 15")
+    print("TRENING, EWALUACJA I ZAMROŻENIE MODELI (src/train.py)")
     print("=" * 80)
 
-    # Potok cech audyt
     stats = fit_and_audit_pipeline()
     print(f"[OK] Preprocessor dopasowany na {stats['valid_train_rows']} wierszach treningu (mediana={stats['learned_budget_median']:.3f} PLN).")
 
-    # Ewaluacja obu modeli
     results = train_and_evaluate_all_models()
 
     print("\n" + "-" * 80)
@@ -337,33 +374,21 @@ def main() -> None:
     print("-" * 80)
     print(results["metrics_df"][["model", "split", "mae", "evaluated_days", "parameters", "data_version"]].to_string(index=False))
 
+    print("\n" + "-" * 80)
+    print("ZAPISANE I ZWERYFIKOWANE ZAMROŻONE MODELE (joblib.load OK):")
+    print("-" * 80)
+    print(f"1. Model bazowy:     {results['baseline_model_path']}")
+    print(f"2. Wybrany potok:    {results['selected_model_path']}")
+    print("[OK] Wczytane modele generują w 100% identyczne prognozy (asercja zdana).")
 
     print("\n" + "-" * 80)
-    print("PODSUMOWANIE METRYK I CZASU:")
+    print("TOP 5 NAJWIĘKSZYCH BŁĘDÓW NA WALIDACJI (reports/validation_errors.csv):")
     print("-" * 80)
-    print(f"1. DummyRegressor (Baseline):")
-    print(f"   - MAE trening:    {results['base_train_mae']:.4f} szt./dzień")
-    print(f"   - MAE walidacja:  {results['base_val_mae']:.4f} szt./dzień")
-    print(f"2. DecisionTreeRegressor(max_depth=3, random_state=42):")
-    print(f"   - MAE trening:    {results['tree_train_mae']:.4f} szt./dzień")
-    print(f"   - MAE walidacja:  {results['tree_val_mae']:.4f} szt./dzień")
-    print(f"   - Czas fit:       {results['tree_fit_ms']:.2f} ms")
-    print(f"   - Czas predict:   {results['tree_predict_val_ms']:.2f} ms")
-
-    diff_val = results["base_val_mae"] - results["tree_val_mae"]
-    if diff_val > 0:
-        print(f"\n[WYNIK PORÓWNANIA] Drzewo decyzyjne uzyskało LEPSZY wynik na walidacji.")
-        print(f"                  Błąd MAE zmalał o {diff_val:.4f} szt./dzień (z {results['base_val_mae']:.2f} do {results['tree_val_mae']:.2f}).")
-    else:
-        print(f"\n[WYNIK PORÓWNANIA] Drzewo decyzyjne uzyskało gorszy lub równy wynik na walidacji (różnica: {diff_val:.4f}).")
-
-    print("\n" + "-" * 80)
-    print("PIERWSZE 5 WIERSZY PROGNOZ WALIDACYJNYCH (reports/validation_predictions.csv):")
-    print("-" * 80)
-    print(results["preds_df"].head(5).to_string(index=False))
+    top_5 = results["errors_df"][["date", "day_of_week", "promo", "actual_orders", "predicted_orders_tree", "abs_error_tree"]].head(5)
+    print(top_5.to_string(index=False))
 
     print("\n" + "=" * 80)
-    print("EWIDENCJA MODELI ZAKOŃCZONA PEŁNYM SUKCESEM.")
+    print("PROCES ZAKOŃCZONY PEŁNYM SUKCESEM.")
     print("=" * 80)
 
 

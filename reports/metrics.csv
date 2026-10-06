@@ -1,5 +1,5 @@
 model,split,mae,evaluated_days,parameters,data_version,fit_time_seconds,predict_time_seconds
-DummyRegressor,train,17.1815,248,strategy='median',"orders_train.csv (v1, 248 poprawnych celow)",0.000648,5.1e-05
-DummyRegressor,validation,16.2143,84,strategy='median',"orders_validation.csv (v1, 84 cele)",0.000648,5.1e-05
-DecisionTreeRegressor,train,11.1093,248,"max_depth=3, random_state=42","orders_train.csv (v1, 248 poprawnych celow)",0.009027,0.004912
-DecisionTreeRegressor,validation,11.9503,84,"max_depth=3, random_state=42","orders_validation.csv (v1, 84 cele)",0.009027,0.004459
+DummyRegressor,train,17.1815,248,strategy='median',"orders_train.csv (v1, 248 poprawnych celow)",0.000621,5.1e-05
+DummyRegressor,validation,16.2143,84,strategy='median',"orders_validation.csv (v1, 84 cele)",0.000621,5.1e-05
+DecisionTreeRegressor,train,11.1093,248,"max_depth=3, random_state=42","orders_train.csv (v1, 248 poprawnych celow)",0.009631,0.004571
+DecisionTreeRegressor,validation,11.9503,84,"max_depth=3, random_state=42","orders_validation.csv (v1, 84 cele)",0.009631,0.004438
