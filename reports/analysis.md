@@ -10,7 +10,7 @@ Niniejszy raport podsumowuje wstępną eksplorację danych sprzedażowych sklepu
 
 ## 2. Użyte dane
 - **Charakter danych:** W analizie wykorzystano **syntetyczne dane z okresu treningowego** (dane wygenerowane komputerowo na potrzeby ćwiczeń analitycznych, odzwierciedlające typowe zjawiska rynkowe).
-- **Pliki źródłowe:** Oczyszczony zbiór treningowy [`data/processed/orders_train.csv`](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/data/processed/orders_train.csv) oraz lokalna baza SQLite [`data/processed/orders.sqlite`](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/data/processed/orders.sqlite).
+- **Pliki źródłowe:** Oczyszczony zbiór treningowy [`data/processed/orders_train.csv`](../data/processed/orders_train.csv) oraz lokalna baza SQLite [`data/processed/orders.sqlite`](../data/processed/orders.sqlite).
 - **Horyzont czasowy:** Od `2024-01-01` do `2024-09-08` (łącznie 252 dni w kalendarzu).
 - **Ważne obserwacje pomiarowe:** W analizie uwzględniono **$N = 248$ ważnych dni**. Cztery dni zawierające brak danych (`NaN`) w kolumnie `orders` zostały wykluczone z obliczeń średnich i wizualizacji (zgodnie z raportem jakości danych).
 - **Czystość metodologiczna:** Dane ze zbioru walidacyjnego oraz testowego pozostały odłożone i nie były analizowane na tym etapie.
@@ -25,7 +25,7 @@ Pierwsza analiza dotyczyła różnic w średniej liczbie zamówień w poszczegó
 ![Średnia liczba zamówień według dnia tygodnia](orders_by_weekday.png)
 
 - **Wskazanie tabeli i kolumn źródłowych:**
-  - **Plik tabeli:** [`reports/by_weekday.csv`](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/by_weekday.csv)
+  - **Plik tabeli:** [`reports/by_weekday.csv`](by_weekday.csv)
   - **Konkretne kolumny:** kolumna **`avg_orders`** (średnia liczba zamówień w danym dniu) oraz kolumna **`valid_orders_days`** (liczba ważnych dni pomiarowych $N$).
 - **Fakty z danych:**
   - Najwyższą średnią dzienną liczbę zamówień odnotowano w **sobotę**: **105.19 szt.** przy liczbie ważnych dni $N = 36$ (kolumny `avg_orders` i `valid_orders_days`).
@@ -44,7 +44,7 @@ Druga analiza dotyczyła zestawienia sprzedaży w dniach z aktywną kampanią pr
 ![Zmiana liczby zamówień w czasie](orders_by_date.png)
 
 - **Wskazanie tabeli i kolumn źródłowych:**
-  - **Plik tabeli:** [`reports/by_promo.csv`](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/by_promo.csv)
+  - **Plik tabeli:** [`reports/by_promo.csv`](by_promo.csv)
   - **Konkretne kolumny:** kolumna **`avg_orders`** (średnia liczba zamówień) oraz kolumna **`valid_orders_days`** (liczba ważnych dni pomiarowych) w podziale na grupy flagi `promo`.
 - **Fakty z danych:**
   - W dniach oznaczonych aktywną promocją (`promo = 1`) średnia liczba zamówień wyniosła **103.47 szt./dzień** dla $N = 51$ dni pomiarowych (kolumny `avg_orders` i `valid_orders_days`).
@@ -62,7 +62,7 @@ Trzecia analiza skupiła się na strukturze rozkładu dziennych wolumenów i pow
 ![Rozkład częstości liczby zamówień](orders_histogram.png)
 
 - **Wskazanie tabeli i kolumn źródłowych:**
-  - **Zbiór źródłowy:** [`data/processed/orders_train.csv`](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/data/processed/orders_train.csv)
+  - **Zbiór źródłowy:** [`data/processed/orders_train.csv`](../data/processed/orders_train.csv)
   - **Konkretna kolumna:** kolumna **`orders`** (dzienna liczba zamówień w $N = 248$ ważnych obserwacjach, po wyłączeniu braków `NaN`).
 - **Fakty z danych:**
   - Średnia arytmetyczna (**84.41 szt.**) oraz mediana (**85.00 szt.**) są do siebie bardzo zbliżone, co wskazuje na symetryczny, jednomodalny (posiadający jeden główny szczyt) rozkład zamówień.
@@ -89,6 +89,49 @@ Trzecia analiza skupiła się na strukturze rozkładu dziennych wolumenów i pow
 ---
 
 # Notatki i sprawdzenia (Dni 5–7)
+
+## Weryfikacja trzech kluczowych liczb z raportu (Kontrola Dnia 8)
+
+Zgodnie z procedurą audytu jakości danych, zweryfikowano i odtworzono rachunek dla trzech wybranych liczb z części raportowej:
+
+### 1. Średnia liczba zamówień dla soboty: `105.19 szt.`
+- **Wartość:** `105.19 szt.`
+- **Plik źródłowy:** [`reports/by_weekday.csv`](by_weekday.csv)
+- **Wiersz / grupa:** Grupa `sobota` (wiersz z indeksem dnia `day_of_week = 5`)
+- **Kolumny źródłowe:** `sum_orders = 3787.0`, `valid_orders_days = 36`
+- **Sposób obliczenia:** Iloraz łącznej sumy zamówień złożonych we wszystkie soboty i liczby ważnych sobót z poprawnym pomiarem (z pominięciem braków danych `NaN`):
+  $$\text{avg\_orders} = \frac{\text{sum\_orders}}{\text{valid\_orders\_days}} = \frac{3787.0}{36} = 105.19444... \approx \mathbf{105.19}$$
+
+### 2. Średnia liczba zamówień w dni z aktywną promocją: `103.47 szt.`
+- **Wartość:** `103.47 szt.`
+- **Plik źródłowy:** [`reports/by_promo.csv`](by_promo.csv)
+- **Wiersz / grupa:** Grupa `promo = 1` (wiersz z aktywną promocją)
+- **Kolumny źródłowe:** `sum_orders = 5277.0`, `valid_orders_days = 51`
+- **Sposób obliczenia:** Iloraz łącznej sumy zamówień w dniach promocyjnych i liczby tych dni w zbiorze treningowym ($N = 51$):
+  $$\text{avg\_orders} = \frac{\text{sum\_orders}}{\text{valid\_orders\_days}} = \frac{5277.0}{51} = 103.47058... \approx \mathbf{103.47}$$
+
+### 3. Mediana dziennej liczby zamówień: `85.00 szt.`
+- **Wartość:** `85.00 szt.`
+- **Plik źródłowy:** [`data/processed/orders_train.csv`](../data/processed/orders_train.csv)
+- **Wiersz / grupa:** Kolumna `orders` (wszystkie $N = 248$ ważnych obserwacji, po wyłączeniu 4 braków `NaN`)
+- **Sposób obliczenia:** Posortowanie rosnąco 248 poprawnych wartości dziennych zamówień i wyznaczenie średniej z dwóch elementów środkowych (pozycja 124. i 125., obie równe 85.0):
+  $$\text{Mediana} = \frac{\text{orders}_{(124)} + \text{orders}_{(125)}}{2} = \frac{85.0 + 85.0}{2} = \mathbf{85.00}$$
+
+### 4. Ćwiczenie na gałęzi Git: Poprawka zdania w raporcie (Gałąź `report-review`)
+- **Cel ćwiczenia:** Wykonanie poprawki redakcyjnej tekstu bezpośrednio na dedykowanej gałęzi roboczej Git (`report-review`), a następnie scalenie jej do gałęzi głównej.
+- **Wprowadzona modyfikacja:** Uproszczenie wyjaśnienia braku przyczynowości w punkcie 2 sekcji ograniczeń analizy:
+  > *„To, że promocja i wysoka sprzedaż występują w te same dni, nie oznacza, że promocja sama wywołała ten wzrost – na wyższą liczbę zamówień mógł równolegle wpłynąć weekend lub wyższy budżet reklamowy.”*
+- **Link do commitu w repozytorium GitHub:** [Commit `7a20bb9`](https://github.com/jakubszymura28-cyber/praktyki-dane/commit/7a20bb9caea01ed6d588583d7dfc03cadbe43335) (`7a20bb9caea01ed6d588583d7dfc03cadbe43335`).
+
+### 5. Przygotowanie do modelowania i Karta Modelu (Dzień 9)
+Zgodnie z wymaganiami Dnia 9 opracowano pełną dokumentację założeń modelowania prognostycznego w pliku [`reports/model_card.md`](model_card.md) (zob. także [Karta Modelu na GitHubie](https://github.com/jakubszymura28-cyber/praktyki-dane/blob/main/reports/model_card.md)):
+- **Zadanie biznesowe:** Wieczorna prognoza dziennej liczby zamówień na dzień jutrzejszy ($t+1$) dla zespołu logistyki i kierownika magazynu.
+- **Rygor czasowy podziału:** Sztywny podział sekwencyjny: 252 dni treningu (`2024-01-01` – `2024-09-08`), 84 dni walidacji (`2024-09-09` – `2024-12-01`) oraz 84 dni testu (`2024-12-02` – `2025-02-23`). Bezwzględny zakaz losowego tasowania dni (`shuffle=False`), aby zapobiec wyciekowi danych w czasie (*Temporal Data Leakage*).
+- **Zmienna celu i dopuszczone cechy:** Cel (`orders`). Dozwolone wyłącznie cechy znane wieczorem przed dniem prognozy: `day_of_week`, `promo`, `planned_ad_spend_pln`. Zmienne `visits` oraz `revenue_pln` są zakazane jako cechy wejściowe (powstają dopiero w trakcie trwania dnia sprzedaży).
+- **Modele:** Model bazowy (Baseline) `DummyRegressor(strategy='median')` wyznaczający stałą medianę $85.00\text{ szt.}$ oraz model kandydujący `DecisionTreeRegressor(max_depth=3)`. Zależność `scikit-learn` została zadeklarowana w [`requirements.txt`](../requirements.txt).
+- **Interpretacja metryki MAE:** MAE mierzy średnią wielkość błędu bezwzględnego w sztukach/dzień na identycznych dniach próby walidacyjnej. Pokonanie baseline'u oznacza, że model predykcyjny jest przeciętnie bliższy realizacji niż stała liczba, lecz samo to porównanie nie dowodzi nauczenia się „rzeczywistych zależności” rynkowych ani relacji przyczynowo-skutkowych i nie gwarantuje generalizacji poza badany okres.
+
+---
 
 Poniżej zachowano pełną, roboczą dokumentację kontrolną, zapytania SQL, testy spójności i tabele referencyjne wypracowane we wcześniejszych etapach prac.
 
@@ -200,11 +243,11 @@ W celu zbadania zachowania funkcji agregujących w SQLite utworzono osobną tabe
 
 ### 🔍 Porównanie COUNT(orders) z raportem jakości danych (`reports/quality.md`)
 
-Przeprowadzono formalne porównanie liczby poprawnych zamówień uzyskanych z zapytania SQL w bazie oraz odnotowanych w raporcie jakości danych [`reports/quality.md`](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/quality.md):
+Przeprowadzono formalne porównanie liczby poprawnych zamówień uzyskanych z zapytania SQL w bazie oraz odnotowanych w raporcie jakości danych [`reports/quality.md`](quality.md):
 
 - **Wynik zapytania SQL dla `orders_train`:**
   `COUNT(orders) = 248` (spośród 252 wierszy po deduplikacji).
-- **Wartość w raporcie jakości ([`reports/quality.md`](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/quality.md#L221) - Sekcja 10, Tabela Przed vs Po):**
+- **Wartość w raporcie jakości ([`reports/quality.md`](quality.md#L221) - Sekcja 10, Tabela Przed vs Po):**
   *Liczba poprawnych `orders`* po czyszczeniu = **248** (z 251 przed czyszczeniem usunięto 2 wartości ujemne oraz 1 zduplikowany wiersz).
 - **Weryfikacja spójności:**
   $$\text{COUNT(orders)}_{\text{SQLite}} = 248 \quad \equiv \quad \text{Poprawne orders}_{\text{quality.md}} = 248$$
@@ -214,7 +257,7 @@ Przeprowadzono formalne porównanie liczby poprawnych zamówień uzyskanych z za
 
 ## Pytania do podsumowania
 
-W tej sekcji przedstawiono podsumowania i strukturę tabel agregujących, obliczonych za pomocą SQLite (`src/query_data.py`, `sql/queries.sql`) oraz biblioteki pandas (`notebooks/02_analysis.ipynb`). Wyniki zostały wyeksportowane do plików CSV: [`reports/by_promo.csv`](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/by_promo.csv), [`reports/by_month.csv`](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/by_month.csv) oraz [`reports/by_weekday.csv`](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/by_weekday.csv).
+W tej sekcji przedstawiono podsumowania i strukturę tabel agregujących, obliczonych za pomocą SQLite (`src/query_data.py`, `sql/queries.sql`) oraz biblioteki pandas (`notebooks/02_analysis.ipynb`). Wyniki zostały wyeksportowane do plików CSV: [`reports/by_promo.csv`](by_promo.csv), [`reports/by_month.csv`](by_month.csv) oraz [`reports/by_weekday.csv`](by_weekday.csv).
 
 ### Pytanie 1
 **Jaka jest średnia liczba zamówień w dni z promocją i bez niej?**
@@ -436,7 +479,7 @@ Taki rachunek przypisuje obu grupom **dokładnie tę samą wagę (po 50%)**, zup
 
 ## Plan wykresów i analiza wyników (Dane treningowe)
 
-Wszystkie poniższe wykresy, tabele i wnioski analityczne zostały opracowane **wyłącznie w oparciu o zbiór treningowy** ([`data/processed/orders_train.csv`](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/data/processed/orders_train.csv) oraz wygenerowany z niego raport [`reports/by_weekday.csv`](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/by_weekday.csv)). W analizie nie wykorzystano danych ze zbioru walidacyjnego ani testowego.
+Wszystkie poniższe wykresy, tabele i wnioski analityczne zostały opracowane **wyłącznie w oparciu o zbiór treningowy** ([`data/processed/orders_train.csv`](../data/processed/orders_train.csv) oraz wygenerowany z niego raport [`reports/by_weekday.csv`](by_weekday.csv)). W analizie nie wykorzystano danych ze zbioru walidacyjnego ani testowego.
 
 * **Okres analizy:** `2024-01-01 – 2024-09-08` (252 dni kalendarzowe)
 * **Liczba ważnych obserwacji:** $N = 248$ dni (4 dni z pustą wartością `NaN` w kolumnie `orders` zostały pominięte w obliczeniach i na wykresach)
@@ -447,32 +490,43 @@ Wszystkie poniższe wykresy, tabele i wnioski analityczne zostały opracowane **
 
 ### 1. Pytanie: *„Jak liczba zamówień zmieniała się w czasie?”*
 - **Typ wykresu:** **Wykres liniowy**
-- **Plik wyjściowy:** [`reports/orders_by_date.png`](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/orders_by_date.png)
+- **Plik wyjściowy:** [`reports/orders_by_date.png`](orders_by_date.png)
 - **Tytuł:** *„Zmiana liczby zamówień w czasie (2024-01-01 – 2024-09-08)”*
 - **Podtytuł:** *„[Zbiór treningowy: N = 248 ważnych dni | 4 braki NaN pominięte]”*
 - **Oś pozioma (X):** **Data [rrrr-mm]** (uporządkowany chronologicznie dzienny szereg czasowy)
 - **Oś pionowa (Y):** **Liczba zamówień [szt.]**
 - **Źródło danych:** Oczyszczony zbiór treningowy (`df_cleaned['orders']`)
 
-#### Tabela źródłowa – Podsumowanie dynamiki miesięcznej:
-| Miesiąc | Dni ogółem | Ważne dni ($N$) | Braki (`NaN`) | Średnia zamówień [szt.] | Min [szt.] | Max [szt.] |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| `2024-01` | 31 | 31 | 0 | 83.29 | 38.0 | 126.0 |
-| `2024-02` | 29 | 28 | 1 | 82.25 | 49.0 | 123.0 |
-| `2024-03` | 31 | 30 | 1 | 81.33 | 44.0 | 126.0 |
-| `2024-04` | 30 | 30 | 0 | 84.47 | 43.0 | 123.0 |
-| `2024-05` | 31 | 30 | 1 | 85.47 | 52.0 | 138.0 |
-| `2024-06` | 30 | 30 | 0 | 82.37 | 42.0 | 131.0 |
-| `2024-07` | 31 | 31 | 0 | 88.00 | 62.0 | 132.0 |
-| `2024-08` | 31 | 30 | 1 | 87.50 | 55.0 | 137.0 |
-| `2024-09` | 8 | 8 | 0 | 87.00 | 57.0 | 130.0 |
-| **Razem** | **252** | **248** | **4** | **84.41** | **38.0** | **138.0** |
+#### Tabela źródłowa – Podsumowanie dynamiki miesięcznej ([`reports/by_month.csv`](by_month.csv)):
+| Miesiąc | Dni ogółem (`total_days`) | Ważne dni ($N$, `valid_orders_days`) | Braki (`NaN`) | Suma zamówień (`sum_orders`) [szt.] | Średnia zamówień (`avg_orders`) [szt.] | Min [szt.] | Max [szt.] |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| `2024-01` | 31 | 31 | 0 | 2437.0 | **78.61** (minimum) | 38.0 | 126.0 |
+| `2024-02` | 29 | 29 | 0 | 2352.0 | **81.10** | 49.0 | 123.0 |
+| `2024-03` | 31 | 30 | 1 | 2593.0 | **86.43** | 44.0 | 126.0 |
+| `2024-04` | 30 | 29 | 1 | 2370.0 | **81.72** | 43.0 | 123.0 |
+| `2024-05` | 31 | 31 | 0 | 2621.0 | **84.55** | 44.0 | 138.0 |
+| `2024-06` | 30 | 30 | 0 | 2423.0 | **80.77** | 42.0 | 132.0 |
+| `2024-07` | 31 | 30 | 1 | 2721.0 | **90.70** (maksimum) | 62.0 | 137.0 |
+| `2024-08` | 31 | 30 | 1 | 2699.0 | **89.97** | 55.0 | 120.0 |
+| `2024-09` | 8 | 8 | 0 | 717.0 | **89.63** | 57.0 | 130.0 |
+| **Razem** | **252** | **248** | **4** | **20933.0** | **84.41** | **38.0** | **138.0** |
+
+#### Rachunek kontrolny i weryfikacja źródłowa dla wybranych miesięcy:
+Zgodnie z procedurą audytu przeliczono średnią bezpośrednio z ilorazu sumy poprawnych zamówień i liczby ważnych obserwacji oraz sprawdzono wartości skrajne w oczyszczonym zbiorze [`data/processed/orders_train.csv`](../data/processed/orders_train.csv):
+1. **Styczeń (`2024-01` – najniższa średnia):**
+   - **Źródło:** [`reports/by_month.csv`](by_month.csv) oraz [`data/processed/orders_train.csv`](../data/processed/orders_train.csv)
+   - **Rachunek kontrolny:** $\text{avg\_orders} = \frac{\text{sum\_orders}}{\text{valid\_orders\_days}} = \frac{2437.0}{31} = 78.612903... \approx \mathbf{78.61}\text{ szt./dzień}$ (0 braków danych `NaN`).
+   - **Wartości skrajne:** Min: **38.0 szt.** (dnia `2024-01-23`), Max: **126.0 szt.** (dnia `2024-01-13`).
+2. **Lipiec (`2024-07` – najwyższa średnia):**
+   - **Źródło:** [`reports/by_month.csv`](by_month.csv) oraz [`data/processed/orders_train.csv`](../data/processed/orders_train.csv)
+   - **Rachunek kontrolny:** $\text{avg\_orders} = \frac{\text{sum\_orders}}{\text{valid\_orders\_days}} = \frac{2721.0}{30} = \mathbf{90.70}\text{ szt./dzień}$ (31 dni w miesiącu minus 1 brak `NaN` w dniu `2024-07-06` = 30 ważnych dni).
+   - **Wartości skrajne:** Min: **62.0 szt.** (dnia `2024-07-22`), Max: **137.0 szt.** (dnia `2024-07-27`).
 
 #### Wnioski analityczne:
 - **Podsumowanie (Co można odczytać vs Czego nie można stwierdzić):**
-  - *Co można odczytać:* Wykres przedstawia wyraźną, regularną cykliczność tygodniową ze szczytami i dołkami w przedziale od 38 do 138 zamówień, przy zachowaniu stabilnego średniomiesięcznego poziomu popytu (81–88 szt./dzień).
+  - *Co można odczytać:* Wykres przedstawia wyraźną, regularną cykliczność tygodniową ze szczytami i dołkami w przedziale od 38 do 138 zamówień, przy zachowaniu stabilnego średniomiesięcznego poziomu popytu (79–91 szt./dzień, od 78.61 w styczniu do 90.70 w lipcu).
   - *Czego nie można stwierdzić:* Przebieg linii szeregu czasowego nie pozwala jednoznacznie wskazać bezpośrednich przyczyn poszczególnych skoków sprzedaży (np. wpływu pogody czy konkretnych emisji reklam), ani nie dowodzi, że identyczny rytm utrzyma się poza okresem treningowym.
-- **Obserwacja (fakty empiryczne):** Dzienna liczba zamówień w całym okresie waha się od 38.0 do 138.0 sztuk. Na wykresie występuje regularna cykliczność tygodniowa w postaci powtarzających się fal. Poziom średniomiesięczny jest stabilny i wynosi od 81.33 do 88.00 szt./dzień. Cztery braki danych są pominięte i nie powodują spadku linii do zera.
+- **Obserwacja (fakty empiryczne):** Dzienna liczba zamówień w całym okresie waha się od 38.0 do 138.0 sztuk. Na wykresie występuje regularna cykliczność tygodniowa w postaci powtarzających się fal. Poziom średniomiesięczny jest stabilny i wynosi od 78.61 do 90.70 szt./dzień (najniższy w styczniu: 78.61 szt., najwyższy w lipcu: 90.70 szt.). Cztery braki danych są pominięte i nie powodują spadku linii do zera.
 - **Interpretacja (wnioski biznesowe):** Wolumen zamówień wykazuje silną regularność tygodniową przy stabilnym popycie bazowym przez cały rok. Działalność operacyjna sklepu charakteryzuje się przewidywalnym rytmem, bez gwałtownego trendu wzrostowego ani zapaści w badanym okresie treningowym.
 - **Czego dane NIE dowodzą (granice wnioskowania):** Sam przebieg linii nie dowodzi, czy szczyty wynikają wyłącznie z zachowań konsumenckich w weekendy, czy z nakładania się kampanii promocyjnych. Nie dowodzi również, że poziom zamówień utrzyma się w kolejnych miesiącach poza okresem treningowym (np. w Q4).
 
@@ -480,14 +534,14 @@ Wszystkie poniższe wykresy, tabele i wnioski analityczne zostały opracowane **
 
 ### 2. Pytanie: *„Który dzień tygodnia miał najwyższą średnią?”*
 - **Typ wykresu:** **Wykres słupkowy (bar chart)**
-- **Plik wyjściowy:** [`reports/orders_by_weekday.png`](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/orders_by_weekday.png)
+- **Plik wyjściowy:** [`reports/orders_by_weekday.png`](orders_by_weekday.png)
 - **Tytuł:** *„Średnia liczba zamówień według dnia tygodnia (2024-01-01 – 2024-09-08)”*
 - **Podtytuł:** *„[Zbiór treningowy: N = 248 ważnych dni | Średnia z pominięciem NaN | Oś Y od 0]”*
 - **Oś pozioma (X):** **Dni od poniedziałku do niedzieli z liczbą ważnych dni ($N$) pod słupkami**
 - **Oś pionowa (Y):** **Średnia liczba zamówień [szt.]** (rozpoczynająca się sztywno od zera `0.0`)
-- **Źródło danych:** Raport zagregowany [`reports/by_weekday.csv`](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/by_weekday.csv)
+- **Źródło danych:** Raport zagregowany [`reports/by_weekday.csv`](by_weekday.csv)
 
-#### Tabela źródłowa ([`reports/by_weekday.csv`](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/by_weekday.csv)):
+#### Tabela źródłowa ([`reports/by_weekday.csv`](by_weekday.csv)):
 | Grupa | Dni ogółem (`total_days`) | Ważne dni (`valid_orders_days`) | Suma zamówień (`sum_orders`) [szt.] | Średnia (`avg_orders`) [szt.] |
 | :---: | :---: | :---: | :---: | :---: |
 | **poniedziałek** | 36 | 35 | 2545.0 | 72.71 |
@@ -499,8 +553,8 @@ Wszystkie poniższe wykresy, tabele i wnioski analityczne zostały opracowane **
 | **niedziela** | 36 | 36 | 3387.0 | 94.08 |
 
 #### Weryfikacja spójności słupka poniedziałku z reports/by_weekday.csv:
-- **Wartość słupka poniedziałku (średnia):** **72.71 szt.** (odpowiada kolumnie `avg_orders` w pliku [`reports/by_weekday.csv`](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/by_weekday.csv)).
-- **Liczba ważnych dni pomiarowych pod słupkiem:** **35 dni** (odpowiada kolumnie `valid_orders_days` w pliku [`reports/by_weekday.csv`](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/by_weekday.csv)).
+- **Wartość słupka poniedziałku (średnia):** **72.71 szt.** (odpowiada kolumnie `avg_orders` w pliku [`reports/by_weekday.csv`](by_weekday.csv)).
+- **Liczba ważnych dni pomiarowych pod słupkiem:** **35 dni** (odpowiada kolumnie `valid_orders_days` w pliku [`reports/by_weekday.csv`](by_weekday.csv)).
 - *Rachunek kontrolny:* W okresie treningowym występuje łącznie 36 poniedziałków (`total_days = 36`), w tym 1 dzień z brakiem danych (`NaN`). Średnia powstała z podzielenia sumy zamówień przez ważne dni: $\frac{2545.0}{35} = 72.7142857... \approx \mathbf{72.71}$, co potwierdza 100% zgodności wykresu z plikiem raportu.
 
 #### Wnioski analityczne:
@@ -508,20 +562,20 @@ Wszystkie poniższe wykresy, tabele i wnioski analityczne zostały opracowane **
   - *Co można odczytać:* Sobota osiąga najwyższą średnią liczbę zamówień (105.19 szt.), wyraźnie przewyższając dni robocze od poniedziałku do czwartku, które utrzymują stabilny poziom 72–77 zamówień dziennie.
   - *Czego nie można stwierdzić:* Duża średnia w sobotę nie oznacza, że każda sobota ma najwięcej zamówień w danym tygodniu (występuje naturalna zmienność losowa), ani nie dowodzi, że sam dzień tygodnia jest jedyną przyczyną wyższej sprzedaży bez udziału np. kampanii promocyjnych.
 - **Obserwacja (fakty empiryczne):** Dniem o najwyższej średniej liczbie zamówień jest **sobota** ze średnią **105.19 szt.** ($N = 36$). Na drugim miejscu plasuje się niedziela (94.08 szt., $N = 36$), a na trzecim piątek (92.78 szt., $N = 36$). Dni robocze od poniedziałku do czwartku notują zbliżone, niższe średnie (72.71–77.32 szt.). Średnie obliczono dzieląc `sum_orders` przez liczbę ważnych dni $N$, z pominięciem braków.
-- **Interpretacja (wnioski biznesowe):** Weekend (zwłaszcza sobota) generuje najwyższy popyt. Klienci najchętniej składają zamówienia w dni wolne od pracy oraz w piątkowe popołudnia, co czyni weekend kluczowym okresem dla planowania przepustowości operacyjnej i obsługi wysyłek.
-- **Czego dane NIE dowodzą (granice wnioskowania):** Sama wysoka średnia w soboty nie dowodzi, że konsumenci kupują więcej wyłącznie z powodu dnia tygodnia. Dane nie wykluczają, że w soboty częściej kierowano ruch z kampanii promocyjnych (`promo = 1`). Nie ma też dowodu na to, że przeniesienie budżetu reklamowego na poniedziałki podniosłoby poniedziałkową sprzedaż do poziomu sobotniego.
+- **Interpretacja (wnioski biznesowe):** Weekend (zwłaszcza sobota) generuje najwyższy popyt. Wzrost wolumenu zamówień widoczny jest już w piątki (średnia 92.78 szt./dzień, trzeci wynik w tygodniu), po czym osiąga szczyt w soboty (105.19 szt./dzień) i niedziele (94.08 szt./dzień). Ponieważ dane źródłowe rejestrowane są wyłącznie z dokładnością do całego dnia kalendarzowego (brak godziny zakupu), wniosek ogranicza się do skali całego dnia – piątki i weekendy są kluczowym okresem dla planowania przepustowości operacyjnej i obsługi wysyłek.
+- **Czego dane NIE dowodzą (granice wnioskowania):** Sama wysoka średnia w soboty nie dowodzi, że konsumenci kupują więcej wyłącznie z powodu dnia tygodnia. Dane nie wykluczają, że w soboty częściej kierowano ruch z kampanii promocyjnych (`promo = 1`). Nie ma też dowodu na to, że przeniesienie budżetu reklamowego na poniedziałki podniosłoby poniedziałkową sprzedaż do poziomu sobotniego. Ponadto ze względu na dzienną dokładność danych (brak znacznika czasu/godziny), ze zbioru nie wynika, w jakich porach doby (np. rano czy popołudniu) składano zamówienia.
 
 #### Eksperyment metodologiczny: Porównanie wariantu z osią od zera z wariantem uciętym (Dlaczego oś słupków musi zaczynać się od zera?):
-W ramach analizy zbadano roboczy wariant wykresu z osią zaczynającą się powyżej zera (od poziomu `65 szt.` – plik demonstracyjny [`reports/orders_by_weekday_truncated_demo.png`](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/orders_by_weekday_truncated_demo.png)):
-- **Wariant z osią od zera (właściwy raportowy – [`reports/orders_by_weekday.png`](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/orders_by_weekday.png)):** Wysokość słupka soboty ($105.19$) względem poniedziałku ($72.71$) jest proporcjonalna do rzeczywistego stosunku wartości: $\frac{105.19}{72.71} \approx 1.45$ (sobota jest o ok. $45\%$ wyższa).
-- **Wariant roboczy z osią od 65 szt. (ucięty – [`reports/orders_by_weekday_truncated_demo.png`](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/orders_by_weekday_truncated_demo.png)):** Widoczna wysokość słupka poniedziałku nad osią wynosi $72.71 - 65 = 7.71$, a słupka soboty $105.19 - 65 = 40.19$. Stosunek widocznych wysokości wynosi $\frac{40.19}{7.71} \approx \mathbf{5.21}$. Sobota sprawia mylne, zmanipulowane wrażenie ponad **5-krotnie większej sprzedaży** niż poniedziałek!
-- **Wniosek i decyzja:** W wykresach słupkowych pole powierzchni i wysokość słupka kodują wielkość bezwzględną. Ucięcie osi zniekształca proporcje i wprowadza odbiorcę w błąd (tzw. efekt lupy / fałszywa skala). **Dlatego do oficjalnego raportu bezwzględnie pozostawiamy wariant z osią rozpoczynającą się od zera ([`reports/orders_by_weekday.png`](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/orders_by_weekday.png)).**
+W ramach analizy zbadano roboczy wariant wykresu z osią zaczynającą się powyżej zera (od poziomu `65 szt.` – plik demonstracyjny [`reports/orders_by_weekday_truncated_demo.png`](orders_by_weekday_truncated_demo.png)):
+- **Wariant z osią od zera (właściwy raportowy – [`reports/orders_by_weekday.png`](orders_by_weekday.png)):** Wysokość słupka soboty ($105.19$) względem poniedziałku ($72.71$) jest proporcjonalna do rzeczywistego stosunku wartości: $\frac{105.19}{72.71} \approx 1.45$ (sobota jest o ok. $45\%$ wyższa).
+- **Wariant roboczy z osią od 65 szt. (ucięty – [`reports/orders_by_weekday_truncated_demo.png`](orders_by_weekday_truncated_demo.png)):** Widoczna wysokość słupka poniedziałku nad osią wynosi $72.71 - 65 = 7.71$, a słupka soboty $105.19 - 65 = 40.19$. Stosunek widocznych wysokości wynosi $\frac{40.19}{7.71} \approx \mathbf{5.21}$. Sobota sprawia mylne, zmanipulowane wrażenie ponad **5-krotnie większej sprzedaży** niż poniedziałek!
+- **Wniosek i decyzja:** W wykresach słupkowych pole powierzchni i wysokość słupka kodują wielkość bezwzględną. Ucięcie osi zniekształca proporcje i wprowadza odbiorcę w błąd (tzw. efekt lupy / fałszywa skala). **Dlatego do oficjalnego raportu bezwzględnie pozostawiamy wariant z osią rozpoczynającą się od zera ([`reports/orders_by_weekday.png`](orders_by_weekday.png)).**
 
 ---
 
 ### 3. Pytanie: *„Jak często występowały różne liczby zamówień?”*
 - **Typ wykresu:** **Histogram**
-- **Plik wyjściowy:** [`reports/orders_histogram.png`](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/orders_histogram.png)
+- **Plik wyjściowy:** [`reports/orders_histogram.png`](orders_histogram.png)
 - **Tytuł:** *„Rozkład częstości liczby zamówień (2024-01-01 – 2024-09-08)”*
 - **Podtytuł:** *„[Zbiór treningowy: N = 248 ważnych dni | Średnia: 84.41 szt., Mediana: 85.00 szt.]”*
 - **Oś pozioma (X):** **Przedział liczby zamówień (koszyki co 10 szt.) [szt.]**

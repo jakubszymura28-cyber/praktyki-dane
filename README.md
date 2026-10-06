@@ -7,7 +7,7 @@ Celem praktyk jest opanowanie analizy danych z wykorzystaniem biblioteki pandas,
 
 ## 📊 Wprowadzenie do danych (`orders_intro.csv`)
 
-Zbiór w [data/raw/orders_intro.csv](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/data/raw/orders_intro.csv) zawiera dzienne liczby zamówień z 6 dni: `8, 10, 10, 12, 15, 65`.
+Zbiór w [data/raw/orders_intro.csv](data/raw/orders_intro.csv) zawiera dzienne liczby zamówień z 6 dni: `8, 10, 10, 12, 15, 65`.
 
 ### Tabela podsumowująca:
 
@@ -24,7 +24,7 @@ Zbiór w [data/raw/orders_intro.csv](file:///c:/Users/Lenovo/Desktop/praktyki%20
 
 ## 📁 Struktura repozytorium
 
-Zgodnie z przyjętymi standardami projektu ([AGENTS.md](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/AGENTS.md)), struktura katalogów prezentuje się następująco:
+Zgodnie z przyjętymi standardami projektu ([AGENTS.md](AGENTS.md)), struktura katalogów prezentuje się następująco:
 
 ```text
 praktyki dane/
@@ -116,7 +116,7 @@ Plik źródłowy z danymi wykorzystywanymi do analizy znajduje się pod ścieżk
 5. Wszystkie komórki wykonają się poprawnie, prezentując podsumowanie statystyczne (6 dni, suma 120, średnia 20, mediana 11), wykres liniowy oraz tabelę analizy obserwacji odstającej.
 
 ### 4. Przygotowanie i czyszczenie zbioru treningowego (Pipeline)
-Do powtarzalnego, deterministycznego wyczyszczenia zbioru treningowego służy skrypt [src/prepare_data.py](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/src/prepare_data.py).
+Do powtarzalnego, deterministycznego wyczyszczenia zbioru treningowego służy skrypt [src/prepare_data.py](src/prepare_data.py).
 
 1. **Uruchomienie w terminalu Antigravity z głównego katalogu projektu:**
    ```powershell
@@ -125,17 +125,17 @@ Do powtarzalnego, deterministycznego wyczyszczenia zbioru treningowego służy s
    *(lub po uprzedniej aktywacji wirtualnego środowiska: `python src/prepare_data.py`)*
 
 2. **Działanie skryptu:**
-   * Wczytuje zbiór surowy [data/raw/orders_train_raw.csv](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/data/raw/orders_train_raw.csv) (tryb read-only, bez modyfikacji oryginału).
+   * Wczytuje zbiór surowy [data/raw/orders_train_raw.csv](data/raw/orders_train_raw.csv) (tryb read-only, bez modyfikacji oryginału).
    * Usuwa identyczne powtórzone wiersze (redukcja z 255 do 252 wierszy).
    * Standaryzuje kolumnę `promo` (zamienia tekst `' yes '` na `1`, rzutuje na typ `int64`).
    * Waliduje format dat (ISO `YYYY-MM-DD`), weryfikuje brak duplikatów i sortuje chronologicznie.
    * Obsługuje wartości ujemne `orders`: zamienia je na brak (`NaN`) i dodaje kolumnę flagi `orders_invalid` (`1` dla wartości ujemnych, `0` dla poprawnych).
    * Zachowuje braki w `planned_ad_spend_pln` i `orders` bez imputacji.
    * Weryfikuje strukturę danych i zgłasza błąd (`ValueError`) przy nieoczekiwanym formacie danych lub braku kolumn zamiast zwracać pusty wynik.
-   * Zapisuje oczyszczony plik wynikowy do [data/processed/orders_train.csv](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/data/processed/orders_train.csv).
+   * Zapisuje oczyszczony plik wynikowy do [data/processed/orders_train.csv](data/processed/orders_train.csv).
 
 ### 5. Uruchomienie testów jednostkowych (Próby sprawdzające)
-Do automatycznej weryfikacji poprawności reguł czyszczenia na izolowanych próbkach danych służy skrypt [tests/test_prepare_data.py](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/tests/test_prepare_data.py).
+Do automatycznej weryfikacji poprawności reguł czyszczenia na izolowanych próbkach danych służy skrypt [tests/test_prepare_data.py](tests/test_prepare_data.py).
 
 1. **Polecenie uruchomienia testów w terminalu z głównego folderu:**
    ```powershell
@@ -149,7 +149,7 @@ Do automatycznej weryfikacji poprawności reguł czyszczenia na izolowanych pró
    * **Bezpieczeństwo danych:** Testy operują na katalogu tymczasowym (`tempfile`) i nie modyfikują oryginalnego pliku `data/raw/orders_train_raw.csv`.
 
 ### 6. Baza danych SQLite i zapytania analityczne (SQL)
-Do załadowania oczyszczonych danych do lokalnej bazy SQLite oraz wykonania zapytań analitycznych służy skrypt [src/query_data.py](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/src/query_data.py).
+Do załadowania oczyszczonych danych do lokalnej bazy SQLite oraz wykonania zapytań analitycznych służy skrypt [src/query_data.py](src/query_data.py).
 
 1. **Polecenie uruchomienia w terminalu z głównego folderu:**
    ```powershell
@@ -158,10 +158,10 @@ Do załadowania oczyszczonych danych do lokalnej bazy SQLite oraz wykonania zapy
    *(lub po uprzedniej aktywacji wirtualnego środowiska: `python src/query_data.py`)*
 
 2. **Działanie skryptu:**
-   * Wczytuje dane z pliku [data/processed/orders_train.csv](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/data/processed/orders_train.csv) do tabeli `orders_train` w lokalnej bazie [data/processed/orders.sqlite](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/data/processed/orders.sqlite).
+   * Wczytuje dane z pliku [data/processed/orders_train.csv](data/processed/orders_train.csv) do tabeli `orders_train` w lokalnej bazie [data/processed/orders.sqlite](data/processed/orders.sqlite).
    * Weryfikuje typy kolumn: `orders` jako liczba rzeczywista (`REAL`), a wartości brakujące jako natywny SQL `NULL` (nie tekst `'NULL'`).
    * Demonstruje zachowanie funkcji agregujących `COUNT(*)` vs `COUNT(kolumna)` vs `AVG(kolumna)` na zestawie `8, 10, NULL`.
-   * Wykonuje zapytania analityczne zdefiniowane w pliku [sql/queries.sql](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/sql/queries.sql):
+   * Wykonuje zapytania analityczne zdefiniowane w pliku [sql/queries.sql](sql/queries.sql):
      - 10 pierwszych dat w kolejności chronologicznej,
      - Dni z aktywną promocją (`promo = 1`),
      - 5 dni z największą liczbą zamówień (`orders`),
@@ -181,8 +181,8 @@ Aby zagwarantować pełną powtarzalność, spójność liczb i poprawność gen
   ```powershell
   python src/prepare_data.py
   ```
-* **Dane wejściowe:** [data/raw/orders_train_raw.csv](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/data/raw/orders_train_raw.csv)
-* **Plik wynikowy:** [data/processed/orders_train.csv](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/data/processed/orders_train.csv)
+* **Dane wejściowe:** [data/raw/orders_train_raw.csv](data/raw/orders_train_raw.csv)
+* **Plik wynikowy:** [data/processed/orders_train.csv](data/processed/orders_train.csv)
 * **Obsługa ścieżek i brakującego pliku CSV:**
   - Skrypt dynamicznie wspiera uruchamianie zarówno z głównego katalogu repozytorium (`data/raw/...`), jak i z podkatalogów roboczych (np. `../data/raw/...`).
   - W przypadku braku pliku źródłowego skrypt rzuca jednoznaczny wyjątek `FileNotFoundError: Nie znaleziono pliku źródłowego: <ścieżka>`, uniemożliwiając ciche kontynuowanie z błędnymi danymi.
@@ -194,20 +194,32 @@ Aby zagwarantować pełną powtarzalność, spójność liczb i poprawność gen
   python src/query_data.py
   ```
 * **Działanie:**
-  - Wczytuje wyczyszczony zbiór do bazy [data/processed/orders.sqlite](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/data/processed/orders.sqlite).
+  - Wczytuje wyczyszczony zbiór do bazy [data/processed/orders.sqlite](data/processed/orders.sqlite).
   - Wykonuje zapytania analityczne i generuje podsumowania do plików CSV w katalogu `reports/`:
-    - [reports/by_promo.csv](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/by_promo.csv) – sprzedaż w dniach z promocją i bez,
-    - [reports/by_month.csv](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/by_month.csv) – dynamika miesięczna,
-    - [reports/by_weekday.csv](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/by_weekday.csv) – podsumowanie według dni tygodnia.
+    - [reports/by_promo.csv](reports/by_promo.csv) – sprzedaż w dniach z promocją i bez,
+    - [reports/by_month.csv](reports/by_month.csv) – dynamika miesięczna,
+    - [reports/by_weekday.csv](reports/by_weekday.csv) – podsumowanie według dni tygodnia.
   - Wyznacza bazowe wartości kontrolne SQL: **248 ważnych dni** i **sumę 20 933.0 zamówień**.
 
 #### Krok 3: Analiza eksploracyjna i raportowanie w notebooku
-* **Plik:** [notebooks/02_analysis.ipynb](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/notebooks/02_analysis.ipynb)
+* **Plik:** [notebooks/02_analysis.ipynb](notebooks/02_analysis.ipynb)
 * **Instrukcja uruchomienia:**
   1. Otwórz notatnik w Antigravity.
   2. Kliknij **Restart Kernel**, a następnie **Run All** (uruchomienie wszystkich komórek od góry do dołu).
 * **Zawartość i kontrole:**
   - Notatnik wywołuje `src/prepare_data.py`, zachowując reguły czyszczenia w jednym skrypcie.
   - W sekcji kontrolnej wykonuje formalne porównanie pandas vs SQL potwierdzające 100% zgodności (liczba obserwacji: 248, suma zamówień: 20 933.0) za pomocą automatycznych asercji (`assert`).
-  - Prezentuje tabele podsumowujące oraz generuje 3 oficjalne wykresy do katalogu `reports/` ([orders_by_date.png](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/orders_by_date.png), [orders_by_weekday.png](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/orders_by_weekday.png), [orders_histogram.png](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/orders_histogram.png)) wraz z wariantem demonstracyjnym uciętej osi ([orders_by_weekday_truncated_demo.png](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/reports/orders_by_weekday_truncated_demo.png)).
+  - Prezentuje tabele podsumowujące oraz generuje 3 oficjalne wykresy do katalogu `reports/` ([orders_by_date.png](reports/orders_by_date.png), [orders_by_weekday.png](reports/orders_by_weekday.png), [orders_histogram.png](reports/orders_histogram.png)) wraz z wariantem demonstracyjnym uciętej osi ([orders_by_weekday_truncated_demo.png](reports/orders_by_weekday_truncated_demo.png)).
+
+### 8. Praca z gałęziami Git (Ćwiczenie kontrolne)
+W ramach ćwiczenia kontroli wersji wykonano poprawkę redakcyjną tekstu w raporcie [reports/analysis.md](reports/analysis.md) na dedykowanej gałęzi roboczej `report-review`:
+* **Commit na GitHub:** [`7a20bb9`](https://github.com/jakubszymura28-cyber/praktyki-dane/commit/7a20bb9caea01ed6d588583d7dfc03cadbe43335) (*`docs(report): uproszczenie wyjasnienia korelacji i przyczynowosci`*).
+* **Zakres:** Uproszczenie wyjaśnienia braku przyczynowości w punkcie 2 sekcji ograniczeń analizy.
+
+### 9. Przygotowanie do modelowania i Karta Modelu (Dzień 9)
+Dokumentacja założeń modelowania prognostycznego znajduje się w pliku [reports/model_card.md](reports/model_card.md):
+* **Cel:** Dobowa prognoza popytu dla magazynu ($t+1$).
+* **Zależności:** Biblioteka `scikit-learn` została dodana do [requirements.txt](requirements.txt).
+* **Modele i metryka:** Porównanie `DecisionTreeRegressor` z modelem bazowym `DummyRegressor(strategy='median')` za pomocą metryki MAE na ustalonym zbiorze walidacyjnym (84 dni bez shuffle).
+
 

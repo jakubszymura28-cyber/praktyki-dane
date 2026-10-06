@@ -148,7 +148,7 @@ Kolumna powinna przyjmować wartości binarne `0` (brak promocji) lub `1` (promo
 
 ## 6. Wytyczne do etapu czyszczenia i przygotowania danych
 
-1. **Integralność danych źródłowych:** Plik [data/raw/orders_train_raw.csv](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/data/raw/orders_train_raw.csv) pozostawiamy niezmieniony. Wszystkie operacje czyszczące zapisujemy do [data/processed/](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/data/processed/).
+1. **Integralność danych źródłowych:** Plik [data/raw/orders_train_raw.csv](../data/raw/orders_train_raw.csv) pozostawiamy niezmieniony. Wszystkie operacje czyszczące zapisujemy do [data/processed/](../data/processed/).
 2. **Duplikaty:** Usunąć 3 nadmiarowe wiersze metodą `df.drop_duplicates()`.
 3. **Standaryzacja `promo`:** Usunąć białe znaki (`.str.strip()`), zamapować `'yes'` na `1`, rzutować na typ całkowity `int64`.
 4. **Obsługa targetu (`orders`) oraz flaga `orders_invalid`:** W pliku wynikowym wartości ujemne (`< 0`, dokładnie 2 rekordy) zamieniamy na brak danych (`NaN`) i dodajemy kolumnę `orders_invalid` (wartość 1 dla błędnych rekordów, 0 dla poprawnych). Wiersze z brakami (`NaN`) – łącznie 4 rekordy (2 pierwotne braki + 2 zamienione z ujemnych) – nie są uzupełniane na tym etapie i zostaną wykluczone z treningu modeli.

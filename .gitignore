@@ -62,3 +62,6 @@ $RECYCLE.BIN/
 # Outputs that are large or temporary (keep directory structure via .gitkeep)
 # outputs/*
 # !outputs/.gitkeep
+
+# Scratch directory
+scratch/
