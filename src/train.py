@@ -251,40 +251,44 @@ def train_and_evaluate_all_models() -> Dict[str, Any]:
     # 1. reports/metrics.csv
     df_metrics = pd.DataFrame([
         {
-            "model": "DummyRegressor(median)",
-            "dataset": "train",
-            "n_samples": len(y_train),
+            "model": "DummyRegressor",
+            "split": "train",
             "mae": round(base_train_mae, 4),
+            "evaluated_days": len(y_train),
+            "parameters": "strategy='median'",
+            "data_version": "orders_train.csv (v1, 248 poprawnych celow)",
             "fit_time_seconds": round(t_base_fit, 6),
             "predict_time_seconds": round(t_base_pred_tr, 6),
-            "time_measured_scope": "Wyznaczenie mediany z y_train oraz generowanie stalej prognozy",
         },
         {
-            "model": "DummyRegressor(median)",
-            "dataset": "validation",
-            "n_samples": len(y_val),
+            "model": "DummyRegressor",
+            "split": "validation",
             "mae": round(base_val_mae, 4),
+            "evaluated_days": len(y_val),
+            "parameters": "strategy='median'",
+            "data_version": "orders_validation.csv (v1, 84 cele)",
             "fit_time_seconds": round(t_base_fit, 6),
             "predict_time_seconds": round(t_base_pred_val, 6),
-            "time_measured_scope": "Generowanie stalej prognozy dla 84 dni walidacji",
         },
         {
-            "model": "DecisionTreeRegressor(max_depth=3)",
-            "dataset": "train",
-            "n_samples": len(y_train),
+            "model": "DecisionTreeRegressor",
+            "split": "train",
             "mae": round(tree_train_mae, 4),
+            "evaluated_days": len(y_train),
+            "parameters": "max_depth=3, random_state=42",
+            "data_version": "orders_train.csv (v1, 248 poprawnych celow)",
             "fit_time_seconds": round(t_tree_fit, 6),
             "predict_time_seconds": round(t_tree_pred_tr, 6),
-            "time_measured_scope": "Pelny potok (ColumnTransformer fit + DecisionTree fit na 248 probkach)",
         },
         {
-            "model": "DecisionTreeRegressor(max_depth=3)",
-            "dataset": "validation",
-            "n_samples": len(y_val),
+            "model": "DecisionTreeRegressor",
+            "split": "validation",
             "mae": round(tree_val_mae, 4),
+            "evaluated_days": len(y_val),
+            "parameters": "max_depth=3, random_state=42",
+            "data_version": "orders_validation.csv (v1, 84 cele)",
             "fit_time_seconds": round(t_tree_fit, 6),
             "predict_time_seconds": round(t_tree_pred_val, 6),
-            "time_measured_scope": "Transformacja cech walidacji (imputacja+OHE) + predykcja drzewa dla 84 probek",
         },
     ])
     metrics_path = resolved_reports_dir / "metrics.csv"
@@ -318,7 +322,7 @@ def train_and_evaluate_all_models() -> Dict[str, Any]:
 
 def main() -> None:
     print("=" * 80)
-    print("TRENING I EWALUACJA MODELI (src/train.py) - DZIEŃ 11, 12, 13")
+    print("TRENING I EWALUACJA MODELI (src/train.py) - DZIEŃ 11, 12, 13, 15")
     print("=" * 80)
 
     # Potok cech audyt
@@ -331,7 +335,8 @@ def main() -> None:
     print("\n" + "-" * 80)
     print("PORÓWNANIE WYNIKÓW MODELI (reports/metrics.csv):")
     print("-" * 80)
-    print(results["metrics_df"][["model", "dataset", "n_samples", "mae", "fit_time_seconds", "predict_time_seconds"]].to_string(index=False))
+    print(results["metrics_df"][["model", "split", "mae", "evaluated_days", "parameters", "data_version"]].to_string(index=False))
+
 
     print("\n" + "-" * 80)
     print("PODSUMOWANIE METRYK I CZASU:")

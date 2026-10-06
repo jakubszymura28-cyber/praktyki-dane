@@ -183,12 +183,15 @@ W potoku [src/train.py](src/train.py) zintegrowano model kandydujący `DecisionT
 
 ### 10.2. Tabela porównawcza modeli (zapisana w `reports/metrics.csv`)
 
-| Model | Zbiór danych | Liczba próbek ($N$) | MAE [szt./dzień] | Czas fit [ms] | Czas predict [ms] |
-|---|:---:|:---:|:---:|:---:|:---:|
-| **`DummyRegressor(median)`** (Baseline) | Trening (`train`) | 248 | 17.1815 | 0.72 ms | 0.06 ms |
-| **`DummyRegressor(median)`** (Baseline) | Walidacja (`validation`) | 84 | 16.2143 | 0.72 ms | 0.06 ms |
-| **`DecisionTreeRegressor(max_depth=3)`** | Trening (`train`) | 248 | 11.1093 | 9.66 ms | 4.85 ms |
-| **`DecisionTreeRegressor(max_depth=3)`** | Walidacja (`validation`) | 84 | **11.9503** | 9.66 ms | 3.79 ms |
+| `model` | `split` | `mae` [szt.] | `evaluated_days` | `parameters` | `data_version` |
+|---|:---:|:---:|:---:|---|---|
+| **`DummyRegressor`** | `train` | **17.1815** | 248 | `strategy='median'` | `orders_train.csv (v1, 248 poprawnych celów)` |
+| **`DummyRegressor`** | `validation` | **16.2143** | 84 | `strategy='median'` | `orders_validation.csv (v1, 84 cele)` |
+| **`DecisionTreeRegressor`** | `train` | **11.1093** | 248 | `max_depth=3, random_state=42` | `orders_train.csv (v1, 248 poprawnych celów)` |
+| **`DecisionTreeRegressor`** | `validation` | **11.9503** | 84 | `max_depth=3, random_state=42` | `orders_validation.csv (v1, 84 cele)` |
+
+> **⚠️ Rygor ewaluacji:** Tabela obejmuje wyłącznie zbiory `train` i `validation`. **Wyników zbioru testowego jeszcze nie ma** – zbiór testowy pozostaje nienaruszony do końcowej ewaluacji.
+
 
 ### 10.3. Wnioski z porównania modeli
 1. **Redukcja błędu bezwzględnego:**
