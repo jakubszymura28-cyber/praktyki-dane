@@ -189,8 +189,11 @@ W potoku [src/train.py](src/train.py) zintegrowano model kandydujący `DecisionT
 | **`DummyRegressor`** | `validation` | **16.2143** | 84 | `strategy='median'` | `orders_validation.csv (v1, 84 cele)` |
 | **`DecisionTreeRegressor`** | `train` | **11.1093** | 248 | `max_depth=3, random_state=42` | `orders_train.csv (v1, 248 poprawnych celów)` |
 | **`DecisionTreeRegressor`** | `validation` | **11.9503** | 84 | `max_depth=3, random_state=42` | `orders_validation.csv (v1, 84 cele)` |
+| **`DecisionTreeRegressor`** | `train` | **8.3212** | 248 | `max_depth=5, random_state=42` | `orders_train.csv (v1, 248 poprawnych celów)` |
+| **`DecisionTreeRegressor`** | `validation` | **11.1029** | 84 | `max_depth=5, random_state=42` | `orders_validation.csv (v1, 84 cele)` |
 
-> **⚠️ Rygor ewaluacji:** Tabela obejmuje wyłącznie zbiory `train` i `validation`. **Wyników zbioru testowego jeszcze nie ma** – zbiór testowy pozostaje nienaruszony do końcowej ewaluacji.
+> **⚠️ Rygor ewaluacji i integralność:** Tabela obejmuje wyłącznie zbiory `train` i `validation` ocenione na tych samych 84 dniach. **Wyników zbioru testowego jeszcze nie ma** – zbiór testowy pozostaje odłożony i nietknięty. Trening nie został połączony z walidacją do ponownego uczenia.
+
 
 
 ### 10.3. Rachunek procentowej poprawy i interpretacja biznesowa
@@ -226,15 +229,26 @@ W całym 84-dniowym oknie walidacyjnym każdy dzień tygodnia występuje **dokł
 
 Pięć największych błędów walidacji wyeksportowano do pliku [reports/validation_errors.csv](validation_errors.csv).
 
-### 10.5. Eksperymentalny wariant głębszego drzewa (`max_depth=5`)
+### 10.5. Wybór ostatecznego rozwiązania i uzasadnienie przed otwarciem testu
+Zgodnie z metodyką projektu sprawdzono wyłącznie jeden dodatkowy wariant hiperparametru na tych samych 248 wierszach treningu i 84 walidacji (bez łączenia zbiorów):
 
-Zgodnie z procedurą sprawdzono wyłącznie jeden dodatkowy wariant hiperparametru na tych samych 248 wierszach treningu i 84 walidacji:
-- `max_depth=5, random_state=42`:
-  * MAE trening (248 dni): **8.3212 szt./dzień**
-  * MAE walidacja (84 dni): **11.1029 szt./dzień**
-  * Procentowa redukcja błędu vs Baseline: **31.52%**
-- **Uzasadnienie ostatecznego wyboru `max_depth=3`:**
-  Model `max_depth=3` cechuje się znacznie mniejszą luką generalizacji ($\text{MAE}_{\text{val}} - \text{MAE}_{\text{train}} = 11.95 - 11.11 = 0.84\text{ szt.}$) w porównaniu do wariantu `max_depth=5` ($11.10 - 8.32 = 2.78\text{ szt.}$). Drzewo o głębokości 3 jest bezpieczniejsze w warunkach produkcyjnych, wysoce interpretowalne i odporne na przeuczenie do szumu w danych uczących.
+| Model kandydujący | MAE trening (248 dni) | MAE walidacja (84 dni) | Luka generalizacji | Złożoność (liście) | Decyzja przed testem |
+|---|:---:|:---:|:---:|:---:|:---:|
+| **`DecisionTreeRegressor(max_depth=3)`** | **11.1093 szt.** | **11.9503 szt.** | **0.84 szt.** | Maks. 8 liści | **WYBRANY DO PRODUKCJI** |
+| **`DecisionTreeRegressor(max_depth=5)`** | **8.3212 szt.** | **11.1029 szt.** | **2.78 szt.** | Maks. 32 liście | Odrzucony (ryzyko przeuczenia) |
+
+#### Szczegółowe uzasadnienie decyzji inżynierskiej:
+1. **Preferencja prostszego modelu przy niemal równych wynikach (Brzytwa Ockhama):**
+   Różnica w błędzie walidacyjnym między wariantem o głębokości 5 a 3 wynosi zaledwie **0.8474 szt./dzień** ($11.10$ vs $11.95$), co jest wielkością marginalną w skali dobowego pakowania przesyłek magazynowych.
+2. **Ryzyko przeuczenia i stabilność uogólniania:**
+   W wariancie `max_depth=5` błąd treningowy spada drastycznie do $8.32$ szt., przez co luka między walidacją a treningiem rośnie ponad trzykrotnie (z $0.84$ do $2.78$ szt.). Wskazuje to, że drzewo o 32 potencjalnych liściach zaczyna dopasowywać się do szumu w danych uczących.
+3. **Specyfikacja wybranego i zamrożonego rozwiązania:**
+   - **Wybrany model:** `DecisionTreeRegressor`
+   - **Parametry hiperprzestrzeni:** `max_depth=3, random_state=42`
+   - **Cechy wejściowe ($X$):** wyłącznie `day_of_week`, `promo`, `planned_ad_spend_pln`
+   - **Zmienna celu ($y$):** `orders`
+   - **Próba ucząca:** wyłącznie 248 poprawnych celów treningowych (brak łączenia treningu z walidacją do ponownego uczenia przed testem).
+
 
 ### 10.6. Zamrożenie modeli (Serialization) i ograniczenia
 Ostatecznie wybrane modele zostały seryjnie utrwalone w formacie binarnym w katalogu `models/`:

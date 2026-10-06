@@ -242,7 +242,32 @@ def train_and_evaluate_all_models() -> Dict[str, Any]:
     tree_train_mae = float(mean_absolute_error(y_train, tree_train_preds))
     tree_val_mae = float(mean_absolute_error(y_val, tree_val_preds))
 
-    assert len(base_val_preds) == 84 and len(tree_val_preds) == 84, "Błąd: Liczba predykcji walidacyjnych != 84!"
+    # =========================================================================
+    # MODEL 3: EKSPERYMENTALNY KANDYDAT (Pipeline: ColumnTransformer + DecisionTreeRegressor max_depth=5)
+    # =========================================================================
+    preprocessor_d5 = build_preprocessor()
+    tree_d5_regressor = DecisionTreeRegressor(max_depth=5, random_state=42)
+    pipeline_d5 = Pipeline([
+        ("preprocessor", preprocessor_d5),
+        ("regressor", tree_d5_regressor),
+    ])
+
+    t0_d5_fit = time.perf_counter()
+    pipeline_d5.fit(X_train, y_train)
+    t_d5_fit = time.perf_counter() - t0_d5_fit
+
+    t0_d5_pred_tr = time.perf_counter()
+    tree_d5_train_preds = pipeline_d5.predict(X_train)
+    t_d5_pred_tr = time.perf_counter() - t0_d5_pred_tr
+
+    t0_d5_pred_val = time.perf_counter()
+    tree_d5_val_preds = pipeline_d5.predict(X_val)
+    t_d5_pred_val = time.perf_counter() - t0_d5_pred_val
+
+    tree_d5_train_mae = float(mean_absolute_error(y_train, tree_d5_train_preds))
+    tree_d5_val_mae = float(mean_absolute_error(y_val, tree_d5_val_preds))
+
+    assert len(base_val_preds) == 84 and len(tree_val_preds) == 84 and len(tree_d5_val_preds) == 84, "Błąd: Liczba predykcji walidacyjnych != 84!"
 
     # =========================================================================
     # ZAPIS I WERYFIKACJA MODELI (.joblib)
@@ -315,6 +340,26 @@ def train_and_evaluate_all_models() -> Dict[str, Any]:
             "data_version": "orders_validation.csv (v1, 84 cele)",
             "fit_time_seconds": round(t_tree_fit, 6),
             "predict_time_seconds": round(t_tree_pred_val, 6),
+        },
+        {
+            "model": "DecisionTreeRegressor",
+            "split": "train",
+            "mae": round(tree_d5_train_mae, 4),
+            "evaluated_days": len(y_train),
+            "parameters": "max_depth=5, random_state=42",
+            "data_version": "orders_train.csv (v1, 248 poprawnych celow)",
+            "fit_time_seconds": round(t_d5_fit, 6),
+            "predict_time_seconds": round(t_d5_pred_tr, 6),
+        },
+        {
+            "model": "DecisionTreeRegressor",
+            "split": "validation",
+            "mae": round(tree_d5_val_mae, 4),
+            "evaluated_days": len(y_val),
+            "parameters": "max_depth=5, random_state=42",
+            "data_version": "orders_validation.csv (v1, 84 cele)",
+            "fit_time_seconds": round(t_d5_fit, 6),
+            "predict_time_seconds": round(t_d5_pred_val, 6),
         },
     ])
     metrics_path = resolved_reports_dir / "metrics.csv"
