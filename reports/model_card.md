@@ -168,5 +168,36 @@ W celu weryfikacji poprawności obliczeń wyznaczono błędy bezwzględne $|y_i 
 - **Porównanie z całym oknem walidacyjnym:**
   Średni błąd na pierwszych 3 dniach ($17.67\text{ szt.}$) jest zbliżony do średniego błędu na całym 84-dniowym okresie walidacji ($16.21\text{ szt.}$). Wszystkie prognozy baseline'u są identyczne i równe $85.0\text{ szt.}$.
 
+---
+
+## 10. Ewaluacja modelu kandydującego DecisionTreeRegressor i porównanie z baseline'em (Dzień 13)
+
+W potoku [src/train.py](src/train.py) zintegrowano model kandydujący `DecisionTreeRegressor(max_depth=3, random_state=42)` połączony w jeden spójny obiekt `Pipeline` z preprocesorem cech (`SimpleImputer`, `OneHotEncoder`, `passthrough`).
+
+### 10.1. Rygor próby i pomiar czasu działania
+- **Próba ucząca:** Identyczne **248 wierszy treningowych** z poprawnym celem (0 wycieku danych).
+- **Próba walidacyjna:** Dokładnie te same **84 dni walidacji** (`2024-09-09` do `2024-12-01`), na których oceniono model bazowy.
+- **Zakres pomiaru czasu wykonania (`time.perf_counter()`):**
+  - **Czas dopasowania potoku (`fit_time`):** ~**9.66 ms** (0.0097 s). Zmierzono łączny czas dopasowania preprocesora (`fit` imputera budżetu i kodera OneHot) oraz budowy 3-poziomowego drzewa decyzyjnego na 248 próbkach.
+  - **Czas generowania prognoz walidacji (`predict_time`):** ~**3.79 ms** (0.0038 s). Zmierzono łączny czas przekształcenia 84 próbek walidacyjnych przez preprocesor oraz przejścia przez reguły decyzyjne drzewa.
+
+### 10.2. Tabela porównawcza modeli (zapisana w `reports/metrics.csv`)
+
+| Model | Zbiór danych | Liczba próbek ($N$) | MAE [szt./dzień] | Czas fit [ms] | Czas predict [ms] |
+|---|:---:|:---:|:---:|:---:|:---:|
+| **`DummyRegressor(median)`** (Baseline) | Trening (`train`) | 248 | 17.1815 | 0.72 ms | 0.06 ms |
+| **`DummyRegressor(median)`** (Baseline) | Walidacja (`validation`) | 84 | 16.2143 | 0.72 ms | 0.06 ms |
+| **`DecisionTreeRegressor(max_depth=3)`** | Trening (`train`) | 248 | 11.1093 | 9.66 ms | 4.85 ms |
+| **`DecisionTreeRegressor(max_depth=3)`** | Walidacja (`validation`) | 84 | **11.9503** | 9.66 ms | 3.79 ms |
+
+### 10.3. Wnioski z porównania modeli
+1. **Redukcja błędu bezwzględnego:**
+   Model drzewa decyzyjnego osiągnął na oknie walidacyjnym błąd **MAE = 11.95 szt./dzień**, co oznacza spadek błędu o **4.26 szt./dzień** (poprawa o ~26.3%) względem modelu bazowego (**16.21 szt./dzień**).
+2. **Zachowanie uogólnienia (brak overfittingu):**
+   Błąd walidacyjny drzewa ($11.95$) jest bardzo zbliżony do błędu treningowego ($11.11$), co potwierdza, że ograniczenie głębokości drzewa do `max_depth=3` skutecznie uchroniło model przed nadmiernym dopasowaniem do szumu w danych uczących.
+3. **Integralność danych:**
+   Wyniki uzyskano bez jakichkolwiek modyfikacji danych surowych ani arbitralnych zmian w regułach czyszczenia – porównanie obu modeli przeprowadzono w 100% rzetelnie na ustalonym oknie walidacyjnym.
+
+
 
 

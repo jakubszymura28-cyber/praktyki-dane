@@ -277,6 +277,21 @@ W ramach implementacji modelu odniesienia skrypt [src/train.py](src/train.py) tr
   - `2024-09-11`: rzeczywiste 56.0, prognoza 85.0 $\rightarrow$ błąd bezwzględny = 29.0 szt.
   - Średni błąd 3 pierwszych dni: **17.67 szt.** (zbliżony do ogólnego MAE walidacji: **16.21 szt.**).
 
+### 13. Ewaluacja modelu kandydującego DecisionTreeRegressor (Dzień 13)
+W potoku [src/train.py](src/train.py) wdrożono i przetestowano model kandydujący `DecisionTreeRegressor(max_depth=3, random_state=42)` zintegrowany z preprocesorem cech (`SimpleImputer`, `OneHotEncoder`, `passthrough`):
+* **Porównanie MAE na oknie walidacyjnym (84 dni):**
+  - Model bazowy (`DummyRegressor`): **16.2143 szt./dzień**
+  - Model kandydujący (`DecisionTreeRegressor`): **11.9503 szt./dzień**
+  - **Poprawa:** Redukcja błędu o **4.2640 szt./dzień** (~26.3% niższy błąd predykcji).
+* **Pomiar czasu działania:**
+  - Czas uczenia potoku (`fit` preprocesora + drzewa): ~**9.66 ms** (0.0097 s).
+  - Czas prognozowania walidacji (`predict` 84 dni): ~**3.79 ms** (0.0038 s).
+* **Zaktualizowane raporty:**
+  - [reports/metrics.csv](reports/metrics.csv) – metryki MAE i zmierzony czas obu modeli na treningu i walidacji.
+  - [reports/validation_predictions.csv](reports/validation_predictions.csv) – równoległe prognozy obu modeli dla wszystkich 84 dni.
+  - [reports/model_card.md](reports/model_card.md) – szczegółowe omówienie wniosków metodologicznych w Sekcji 10.
+
+
 
 
 
