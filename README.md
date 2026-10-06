@@ -261,6 +261,22 @@ Do powtarzalnego, bezpiecznego przygotowania cech do modelowania służy skrypt 
    * **Kontrola spójności:** Skrypt automatycznie weryfikuje zgodność wyuczonej mediany z niezależnym rachunkiem pandas (`575.275 PLN == 575.275 PLN`, błąd = 0.00).
    * **Szczegóły audytu:** Pełne zestawienie znajduje się w Sekcji 8 dokumentu [reports/model_card.md](reports/model_card.md).
 
+### 12. Ewaluacja modelu bazowego DummyRegressor (Dzień 12)
+W ramach implementacji modelu odniesienia skrypt [src/train.py](src/train.py) trenuje model `DummyRegressor(strategy='median')`:
+* **Uczenie i stała prognoza:** Uczony wyłącznie na 248 wierszach treningowych z poprawnym celem; wyznacza stałą prognozę równą medianie z treningu: **85.0 szt./dzień**.
+* **Predykcja na walidacji:** Generuje prognozy dla wszystkich 84 dni zbioru walidacyjnego.
+* **Wyniki metryk MAE:**
+  - Zbiór treningowy (248 dni): **17.1815 szt./dzień**
+  - Zbiór walidacyjny (84 dni): **16.2143 szt./dzień**
+* **Wygenerowane raporty:**
+  - [reports/metrics.csv](reports/metrics.csv) – formalne zestawienie MAE dla zbioru treningowego i walidacyjnego.
+  - [reports/validation_predictions.csv](reports/validation_predictions.csv) – dzienne zestawienie dat, poprawnych wartości `orders`, prognoz stałych (`85.0`) oraz błędów bezwzględnych.
+* **Kontrola ręczna (pierwsze 3 dni walidacji):**
+  - `2024-09-09`: rzeczywiste 78.0, prognoza 85.0 $\rightarrow$ błąd bezwzględny = 7.0 szt.
+  - `2024-09-10`: rzeczywiste 68.0, prognoza 85.0 $\rightarrow$ błąd bezwzględny = 17.0 szt.
+  - `2024-09-11`: rzeczywiste 56.0, prognoza 85.0 $\rightarrow$ błąd bezwzględny = 29.0 szt.
+  - Średni błąd 3 pierwszych dni: **17.67 szt.** (zbliżony do ogólnego MAE walidacji: **16.21 szt.**).
+
 
 
 

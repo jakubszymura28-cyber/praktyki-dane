@@ -1,0 +1,3 @@
+model,dataset,n_samples,mae,predicted_constant
+DummyRegressor(median),train,248,17.1815,85.0
+DummyRegressor(median),validation,84,16.2143,85.0

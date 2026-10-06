@@ -137,4 +137,36 @@ Uczenie przygotowania cech przeprowadzono ściśle na 248 wierszach treningowych
 
 Wynik kontroli potwierdza, że potok cech w [src/train.py](src/train.py) uczy się dokładnie na właściwym podzbiorze obserwacji, nie powoduje wycieku danych i poprawnie uzupełnia braki planowanego budżetu reklamowego.
 
+---
+
+## 9. Wyniki ewaluacji modelu bazowego DummyRegressor (Dzień 12)
+
+Model bazowy `DummyRegressor(strategy='median')` został wytrenowany na 248 wierszach zbioru treningowego i przetestowany na całym oknie walidacyjnym (84 dni).
+
+### 9.1. Stała predykcja i metryki błędu MAE
+- **Wyuczona stała prognoza ($\hat{y}$):** **85.00 szt.** (równa dokładnie medianie z 248 obserwacji treningowych).
+- **Zapisane pliki wyników:**
+  - [reports/metrics.csv](metrics.csv) – zestawienie metryk MAE dla treningu i walidacji.
+  - [reports/validation_predictions.csv](validation_predictions.csv) – tabela predykcji i błędów bezwzględnych dla każdego z 84 dni walidacji.
+
+| Zbiór danych | Liczba próbek ($N$) | Wyuczona stała predykcja | MAE (Średni błąd bezwzględny) |
+|---|:---:|:---:|:---:|
+| **Treningowy (`train`)** | 248 dni | 85.0 szt. | **17.1815 szt./dzień** |
+| **Walidacyjny (`validation`)** | 84 dni | 85.0 szt. | **16.2143 szt./dzień** |
+
+### 9.2. Ręczna kontrola dla 3 pierwszych dat walidacji
+W celu weryfikacji poprawności obliczeń wyznaczono błędy bezwzględne $|y_i - \hat{y}_i|$ dla pierwszych 3 dni zbioru walidacyjnego:
+
+| Data ($t$) | Rzeczywiste zamówienia ($y$) | Prognoza baseline ($\hat{y}$) | Różnica ($y - \hat{y}$) | Błąd bezwzględny $|y - \hat{y}|$ |
+|:---:|:---:|:---:|:---:|:---:|
+| `2024-09-09` | 78.0 szt. | 85.0 szt. | -7.0 szt. | **7.0 szt.** |
+| `2024-09-10` | 68.0 szt. | 85.0 szt. | -17.0 szt. | **17.0 szt.** |
+| `2024-09-11` | 56.0 szt. | 85.0 szt. | -29.0 szt. | **29.0 szt.** |
+
+- **Średni błąd bezwzględny pierwszych 3 dat:**
+  $$\text{MAE}_{3\text{ dni}} = \frac{7.0 + 17.0 + 29.0}{3} = \frac{53.0}{3} \approx 17.6667\text{ szt./dzień}$$
+- **Porównanie z całym oknem walidacyjnym:**
+  Średni błąd na pierwszych 3 dniach ($17.67\text{ szt.}$) jest zbliżony do średniego błędu na całym 84-dniowym okresie walidacji ($16.21\text{ szt.}$). Wszystkie prognozy baseline'u są identyczne i równe $85.0\text{ szt.}$.
+
+
 
