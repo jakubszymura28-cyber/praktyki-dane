@@ -332,22 +332,28 @@ def train_and_evaluate_all_models() -> Dict[str, Any]:
     preds_path = resolved_reports_dir / "validation_predictions.csv"
     df_val_preds.to_csv(preds_path, index=False, encoding="utf-8")
 
-    # 3. reports/validation_errors.csv (Największe błędy na walidacji)
-    df_errors = df_val_preds.copy()
-    df_errors["day_of_week"] = df_val["day_of_week"]
-    df_errors["promo"] = df_val["promo"]
-    df_errors["planned_ad_spend_pln"] = df_val["planned_ad_spend_pln"]
-    df_errors_sorted = df_errors.sort_values(by="abs_error_tree", ascending=False).reset_index(drop=True)
+    # 3. reports/validation_errors.csv (Pięć największych błędów drzewa wraz z datą, cechami, prawdziwym orders i prognozą)
+    df_errors = pd.DataFrame({
+        "date": df_val["date"],
+        "day_of_week": df_val["day_of_week"],
+        "promo": df_val["promo"],
+        "planned_ad_spend_pln": df_val["planned_ad_spend_pln"],
+        "actual_orders": df_val["orders"],
+        "predicted_orders_tree": np.round(tree_val_preds, 2),
+        "abs_error_tree": np.round(np.abs(df_val["orders"] - tree_val_preds), 2),
+    })
+    df_errors_top5 = df_errors.sort_values(by="abs_error_tree", ascending=False).head(5).reset_index(drop=True)
     errors_path = resolved_reports_dir / "validation_errors.csv"
-    df_errors_sorted.to_csv(errors_path, index=False, encoding="utf-8")
+    df_errors_top5.to_csv(errors_path, index=False, encoding="utf-8")
 
     return {
         "metrics_df": df_metrics,
         "preds_df": df_val_preds,
-        "errors_df": df_errors_sorted,
+        "errors_df": df_errors_top5,
         "metrics_path": metrics_path,
         "preds_path": preds_path,
         "errors_path": errors_path,
+
         "baseline_model_path": baseline_path,
         "selected_model_path": selected_pipeline_path,
         "base_val_mae": base_val_mae,

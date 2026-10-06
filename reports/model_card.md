@@ -217,10 +217,17 @@ W całym 84-dniowym oknie walidacyjnym każdy dzień tygodnia występuje **dokł
 | **Piątek (4)** | 12 | 13.67 szt. | 13.18 szt. | **-0.49 szt.** | Porównywalna jakość |
 | **Sobota (5)** | 12 | 28.83 szt. | 12.98 szt. | **-15.85 szt.** | **Kluczowa eliminacja potężnego błędu stałej mediany w weekend!** |
 | **Niedziela (6)** | 12 | 15.67 szt. | 14.04 szt. | **-1.63 szt.** | Lepsze uchwycenie niedzielnego popytu |
+| **Suma / Średnia** | **84 dni** | **16.21 szt.** | **11.95 szt.** | **-4.26 szt.** | **Kontrola liczności: 12 × 7 = 84 dni (100% próby walidacji)** |
 
-Największe odchylenia zarejestrowano w osobnym raporcie [reports/validation_errors.csv](validation_errors.csv) (posortowanym według błędu bezwzględnego drzewa).
+> **🔬 Hipoteza badawcza (możliwa przyczyna największych błędów):**  
+> Jedną z głównych przyczyn występowania największych błędów modelu drzewa (np. niedoszacowania w dniach `2024-10-04`, `2024-11-02`, `2024-11-10`, `2024-11-28`) jest **brak informacji o ogólnym trendzie czasowym, czyli stopniowej zmianie i wzroście bazowego poziomu zamówień w czasie** (np. sezonowe ożywienie popytu w IV kwartale przed okresem świątecznym).  
+> Model opiera swoje reguły wyłącznie na bieżącym dniu tygodnia, pojedynczej fladze promocji i budżecie reklamowym, nie posiadając cech reprezentujących upływ czasu ani średnich kroczących popytu z ostatnich dni.  
+> *Uwaga metodologiczna: powyższe przypuszczenie stanowi **hipotezę analityczną**, a nie ustalony i udowodniony fakt.*
+
+Pięć największych błędów walidacji wyeksportowano do pliku [reports/validation_errors.csv](validation_errors.csv).
 
 ### 10.5. Eksperymentalny wariant głębszego drzewa (`max_depth=5`)
+
 Zgodnie z procedurą sprawdzono wyłącznie jeden dodatkowy wariant hiperparametru na tych samych 248 wierszach treningu i 84 walidacji:
 - `max_depth=5, random_state=42`:
   * MAE trening (248 dni): **8.3212 szt./dzień**
