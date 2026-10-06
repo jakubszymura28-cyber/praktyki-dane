@@ -1,5 +1,5 @@
 model,dataset,n_samples,mae,fit_time_seconds,predict_time_seconds,time_measured_scope
-DummyRegressor(median),train,248,17.1815,0.000717,5.5e-05,Wyznaczenie mediany z y_train oraz generowanie stalej prognozy
-DummyRegressor(median),validation,84,16.2143,0.000717,5.8e-05,Generowanie stalej prognozy dla 84 dni walidacji
-DecisionTreeRegressor(max_depth=3),train,248,11.1093,0.009656,0.004852,Pelny potok (ColumnTransformer fit + DecisionTree fit na 248 probkach)
-DecisionTreeRegressor(max_depth=3),validation,84,11.9503,0.009656,0.003792,Transformacja cech walidacji (imputacja+OHE) + predykcja drzewa dla 84 probek
+DummyRegressor(median),train,248,17.1815,0.000725,5.5e-05,Wyznaczenie mediany z y_train oraz generowanie stalej prognozy
+DummyRegressor(median),validation,84,16.2143,0.000725,5.7e-05,Generowanie stalej prognozy dla 84 dni walidacji
+DecisionTreeRegressor(max_depth=3),train,248,11.1093,0.010302,0.004177,Pelny potok (ColumnTransformer fit + DecisionTree fit na 248 probkach)
+DecisionTreeRegressor(max_depth=3),validation,84,11.9503,0.010302,0.003949,Transformacja cech walidacji (imputacja+OHE) + predykcja drzewa dla 84 probek

@@ -291,6 +291,20 @@ W potoku [src/train.py](src/train.py) wdrożono i przetestowano model kandydują
   - [reports/validation_predictions.csv](reports/validation_predictions.csv) – równoległe prognozy obu modeli dla wszystkich 84 dni.
   - [reports/model_card.md](reports/model_card.md) – szczegółowe omówienie wniosków metodologicznych w Sekcji 10.
 
+### 14. Testy jednostkowe potoku uczenia i zabezpieczeń (Dzień 14)
+Do weryfikacji odporności potoku uczenia i ochrony przed wyciekiem danych służy zestaw testów [tests/test_training.py](tests/test_training.py):
+
+1. **Polecenie uruchomienia testów:**
+   ```powershell
+   .\.venv\Scripts\python -m unittest tests/test_training.py
+   ```
+2. **Zakres sprawdzanych prób:**
+   * **Próba 1 (Brak wymaganego pliku):** Weryfikuje, czy brak pliku źródłowego rzuca jednoznaczny wyjątek `FileNotFoundError`.
+   * **Próba 2 (Odrzucenie zabronionych cech):** Weryfikuje, czy próba przekazania kolumn `orders`, `visits` lub `revenue_pln` jako cech wejściowych zostaje zablokowana z błędem `ValueError` (ochrona przed Data Leakage w czasie $t+1$).
+   * **Próba 3 (Wspólna implementacja przygotowania cech):** Weryfikuje determinizm przekształcenia cech za pomocą wspólnego obiektu `build_preprocessor()` z modułu `src/train.py`.
+   * **Bezpieczeństwo danych:** Testy operują na katalogach tymczasowych (`tempfile`) i nie modyfikują oryginalnych zbiorów danych.
+
+
 
 
 

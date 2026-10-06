@@ -39,6 +39,21 @@ REPORTS_DIR = BASE_DIR / "reports"
 FEATURE_COLUMNS = ["day_of_week", "promo", "planned_ad_spend_pln"]
 TARGET_COLUMN = "orders"
 EXCLUDED_COLUMNS = ["visits", "revenue_pln", "date", "orders_invalid"]
+FORBIDDEN_FEATURES = {"orders", "visits", "revenue_pln"}
+
+
+def validate_feature_list(features: list) -> None:
+    """Weryfikuje listę cech wejściowych pod kątem zabronionych kolumn.
+
+    orders jest zmienną celu, a visits i revenue_pln powodują wyciek danych (Data Leakage) w czasie t+1.
+    Próba użycia którejkolwiek z tych kolumn jako cechy wejściowej skutkuje błędem ValueError.
+    """
+    forbidden_found = set(features).intersection(FORBIDDEN_FEATURES)
+    if forbidden_found:
+        raise ValueError(
+            f"Błąd konfiguracji cech: Wykryto zabronione kolumny na liście cech wejściowych: {sorted(list(forbidden_found))}. "
+            f"Kolumny 'orders' (cel), 'visits' i 'revenue_pln' (wyciek danych t+1) nie mogą być cechami wejściowymi!"
+        )
 
 
 def resolve_path(p: Path) -> Path:
@@ -67,15 +82,21 @@ def build_preprocessor() -> ColumnTransformer:
 
 def prepare_training_data(
     train_path: Path = TRAIN_PROCESSED_PATH,
+    feature_cols: list = None,
 ) -> Tuple[pd.DataFrame, pd.Series, dict]:
     """Wczytuje zbiór treningowy, filtruje do 248 wierszy z poprawnym celem i zwraca X oraz y."""
+    if feature_cols is None:
+        feature_cols = FEATURE_COLUMNS
+
+    validate_feature_list(feature_cols)
+
     resolved_path = resolve_path(train_path)
     if not resolved_path.exists():
         raise FileNotFoundError(f"Nie znaleziono pliku danych treningowych: {resolved_path}")
 
     df_raw = pd.read_csv(resolved_path)
 
-    missing_cols = set(FEATURE_COLUMNS + [TARGET_COLUMN]).difference(df_raw.columns)
+    missing_cols = set(feature_cols + [TARGET_COLUMN]).difference(df_raw.columns)
     if missing_cols:
         raise ValueError(f"Brak wymaganych kolumn w zbiorze treningowym: {missing_cols}")
 
@@ -88,8 +109,9 @@ def prepare_training_data(
             f"Oczekiwano dokładnie 248 wierszy z poprawnym celem, otrzymano: {valid_train_rows} (z {total_train_rows})!"
         )
 
-    X = df_valid[FEATURE_COLUMNS].copy()
+    X = df_valid[feature_cols].copy()
     y = df_valid[TARGET_COLUMN].copy()
+
 
     budget_series = df_valid["planned_ad_spend_pln"]
     budget_non_null = int(budget_series.notna().sum())
