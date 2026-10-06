@@ -241,5 +241,26 @@ W ramach rozbudowy potoku danych przygotowano proces walidacyjny oraz złączeni
 * **Pliki wynikowe:** [data/processed/orders_train.csv](data/processed/orders_train.csv) oraz [data/processed/orders_validation.csv](data/processed/orders_validation.csv).
 * **Szczegółowy audyt:** Pełny raport kontroli złączenia i podziału czasowego znajduje się w Sekcji 11 raportu [reports/quality.md](reports/quality.md).
 
+### 11. Potok przygotowania cech i treningu (Dzień 11)
+Do powtarzalnego, bezpiecznego przygotowania cech do modelowania służy skrypt [src/train.py](src/train.py).
+
+1. **Polecenie uruchomienia w terminalu z głównego folderu:**
+   ```powershell
+   .\.venv\Scripts\python src/train.py
+   ```
+   *(lub po aktywacji środowiska: `python src/train.py`)*
+
+2. **Działanie skryptu i ochrona przed wyciekiem danych:**
+   * **Izolacja próby:** Uczenie potoku (`.fit()`) odbywa się **wyłącznie na 248 wierszach treningowych** posiadających poprawną wartość celu `orders` (4 wiersze z brakami są wykluczone).
+   * **Cechy wejściowe ($X$):** wyłącznie `day_of_week`, `promo`, `planned_ad_spend_pln`.
+   * **Kolumny wykluczone:** `visits` i `revenue_pln` **nie są cechami** (zapobieganie wyciekowi danych w czasie $t+1$).
+   * **Struktura potoku `ColumnTransformer`:**
+     - `SimpleImputer(strategy='median')` – **uczy się z treningu** mediany budżetu reklamowego (`575.275 PLN`) do uzupełniania braków.
+     - `OneHotEncoder(handle_unknown='ignore')` – **uczy się z treningu** 7 kategorii dni tygodnia (0–6).
+     - `passthrough` – **stosuje ustaloną regułę** przekazania binarnej flagi `promo` (0/1) bez uczenia wag.
+   * **Kontrola spójności:** Skrypt automatycznie weryfikuje zgodność wyuczonej mediany z niezależnym rachunkiem pandas (`575.275 PLN == 575.275 PLN`, błąd = 0.00).
+   * **Szczegóły audytu:** Pełne zestawienie znajduje się w Sekcji 8 dokumentu [reports/model_card.md](reports/model_card.md).
+
+
 
 

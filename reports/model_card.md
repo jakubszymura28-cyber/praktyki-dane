@@ -101,3 +101,40 @@ Użycie kolumn `visits` (liczba wizyt na stronie) oraz `revenue_pln` (przychód 
 ### Obsługa braków w cechach:
 W oczyszczonych danych zachowujemy braki w cechach (np. brakujący budżet reklamowy `planned_ad_spend_pln`). Ewentualną medianę do ich uzupełnienia wyznaczamy **wyłącznie z danych treningowych wewnątrz potoku `Pipeline`** (np. za pomocą `SimpleImputer(strategy="median")`), co gwarantuje pełną izolację zbioru walidacyjnego i testowego.
 
+---
+
+## 8. Potok przygotowania cech i audyt wyuczonej mediany budżetu (Dzień 11)
+
+W ramach wdrożenia potoku w [src/train.py](src/train.py) zaimplementowano formalny proces inżynierii cech (`ColumnTransformer`) uczony wyłącznie na **248 wierszach** zbioru treningowego posiadających poprawny cel (`orders.notna()`).
+
+### 8.1. Zdefiniowana lista wejść i wykluczeń
+- **Cechy wejściowe ($X$):** wyłącznie `day_of_week`, `promo`, `planned_ad_spend_pln`.
+- **Zmienna celu ($y$):** `orders`.
+- **Kolumny wykluczone (bezwzględny zakaz użycia jako cechy):**
+  - `visits` (wizyty) oraz `revenue_pln` (przychód) — są znane dopiero po zakończeniu doby sprzedaży, ich użycie w przewidywaniu na jutro ($t+1$) stanowiłoby kardynalny wyciek danych (Data Leakage).
+  - `date` (identyfikator czasowy) oraz `orders_invalid` (flaga audytowa jakości).
+
+### 8.2. Role komponentów potoku (Uczenie vs Ustalona reguła)
+| Komponent | Obsługiwana cecha | Rola w potoku | Co dokładnie robi krok |
+|---|:---:|:---:|---|
+| `SimpleImputer(strategy='median')` | `planned_ad_spend_pln` | **Uczy się (`fit`)** | Oblicza i zapamiętuje medianę budżetu z danych treningowych (`575.275 PLN`), aby uzupełnić ewentualne braki. |
+| `OneHotEncoder(handle_unknown='ignore')` | `day_of_week` | **Uczy się (`fit`)** | Wyznacza unikalny zbiór kategorii dni tygodnia `[0, 1, 2, 3, 4, 5, 6]` z treningu i tworzy 7 kolumn binarnych. |
+| `passthrough` | `promo` | **Stosuje ustaloną regułę** | Przekazuje binarną flagę (0 lub 1) bez dopasowywania wag ani uczenia jakichkolwiek parametrów z danych. |
+
+### 8.3. Źródłowe liczności i kontrola zgodności mediany budżetu
+Uczenie przygotowania cech przeprowadzono ściśle na 248 wierszach treningowych z poprawnym celem:
+- **Łączna liczba wierszy w zbiorze treningowym:** 252.
+- **Liczba wierszy z poprawnym celem do uczenia:** 248 (wykluczono 4 braki celu).
+- **Liczba wierszy z uzupełnionym budżetem reklamowym:** 244.
+- **Liczba braków budżetu (`NaN`):** 4.
+
+#### Tabela kontroli mediany budżetu reklamowego:
+| Metoda obliczenia | Wartość mediany budżetu | Źródło danych | Status kontroli |
+|---|:---:|:---:|:---:|
+| **Wyuczona statystyka `SimpleImputer`** | **575.275 PLN** | `imputer.statistics_[0]` w `src/train.py` | Baza |
+| **Niezależne obliczenie agenta (pandas)** | **575.275 PLN** | 244 niepuste budżety z 248 wierszy treningu | Identyczne |
+| **Różnica bezwzględna** | **0.000 PLN** | Różnica numeryczna | **100% Zgodności** |
+
+Wynik kontroli potwierdza, że potok cech w [src/train.py](src/train.py) uczy się dokładnie na właściwym podzbiorze obserwacji, nie powoduje wycieku danych i poprawnie uzupełnia braki planowanego budżetu reklamowego.
+
+
