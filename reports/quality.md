@@ -224,5 +224,39 @@ Tabela podsumowująca wpływ zatwierdzonych reguł czyszczenia na zbiór trening
 
 Dodatkowo w zbiorze wynikowym dodano kolumnę flagi audytowej `orders_invalid` (2 jedynki oznaczające ujemne wartości w surowych danych).
 
+---
+
+## 11. Kontrole połączenia z kalendarzem i walidacja podziału czasowego (Dzień 10)
+
+W ramach etapu przygotowania zbioru walidacyjnego (`data/raw/orders_validation.csv` $\rightarrow$ `data/processed/orders_validation.csv`) przeprowadzono procedurę kontrolną złączenia z kalendarzem (`data/raw/calendar.csv`) oraz zweryfikowano rygor podziału czasowego.
+
+### 11.1. Kontrole połączenia z kalendarzem (LEFT JOIN po kolumnie `date`)
+Zgodnie z zasadą Fail-Fast, w potoku `src/prepare_data.py` sprawdzono:
+1. **Unikalność dat kalendarza:** Tabela `calendar.csv` zawiera 420 unikalnych dat (brak jakichkolwiek duplikatów).
+2. **Dopasowanie każdej daty:** 
+   - 100% dat ze zbioru treningowego (252 z 252) istnieje w kalendarzu.
+   - 100% dat ze zbioru walidacyjnego (84 z 84) istnieje w kalendarzu.
+   - Brak jakichkolwiek pustych wartości (`NaN`) w dołączonej cesze `day_of_week`.
+3. **Niezmieniona liczba wierszy (kontrola fan-out):**
+   - Trening: 252 wiersze przed $\rightarrow$ 252 wiersze po złączeniu (różnica: 0).
+   - Walidacja: 84 wiersze przed $\rightarrow$ 84 wiersze po złączeniu (różnica: 0).
+4. **Niezmieniona suma poprawnych `orders`:**
+   - Trening: suma zamówień przed = 20 933.0, po = 20 933.0 (różnica: 0.0).
+   - Walidacja: suma zamówień przed = 7 492.0, po = 7 492.0 (różnica: 0.0).
+5. **Cechy modelu:** Dołączono wyłącznie `day_of_week` (kodowanie: 0 = poniedziałek, ..., 6 = niedziela). Kolumna `is_weekend` **nie została dodana** do cech modelu.
+
+### 11.2. Walidacja podziału czasowego i liczności
+
+| Kryterium weryfikacji | Zbiór treningowy (`train`) | Zbiór walidacyjny (`validation`) | Status / Wynik |
+|---|:---:|:---:|---|
+| **Liczba dat kalendarzowych** | **252 daty** | **84 daty** | Zgodne ze schematem 420 dni |
+| **Zakres dat** | `2024-01-01` – `2024-09-08` | `2024-09-09` – `2024-12-01` | Spójny ciąg chronologiczny |
+| **Liczba poprawnych celów (`orders`)** | **248** (4 braki NaN wykluczone) | **84** (0 braków NaN) | Zgodne z audytem jakości |
+| **Brak wspólnych dat** | $\text{Trening} \cap \text{Walidacja} = \emptyset$ | 0 wspólnych dat | Pełna izolacja prób (brak wycieku danych) |
+| **Sekwencyjność czasowa** | Koniec: `2024-09-08` | Początek: `2024-09-09` | Początek walidacji bezpośrednio po końcu treningu |
+| **Zasada traktowania braków celu** | Brak imputacji (4 braki) | Brak imputacji (0 braków) | Rygor metodologiczny zachowany |
+| **Mediana budżetu reklamowego** | Wyliczana wyłącznie na treningu | **Brak liczenia mediany na walidacji** | Ochrona przed wyciekiem wiedzy o walidacji |
+
+
 
 

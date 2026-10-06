@@ -115,8 +115,8 @@ Plik źródłowy z danymi wykorzystywanymi do analizy znajduje się pod ścieżk
 4. Kliknij na górnym pasku notebooka opcję **Restart Kernel**, a następnie **Run All** (lub uruchamiaj komórki po kolei od góry).
 5. Wszystkie komórki wykonają się poprawnie, prezentując podsumowanie statystyczne (6 dni, suma 120, średnia 20, mediana 11), wykres liniowy oraz tabelę analizy obserwacji odstającej.
 
-### 4. Przygotowanie i czyszczenie zbioru treningowego (Pipeline)
-Do powtarzalnego, deterministycznego wyczyszczenia zbioru treningowego służy skrypt [src/prepare_data.py](src/prepare_data.py).
+### 4. Przygotowanie i czyszczenie zbiorów danych (Pipeline: Trening i Walidacja)
+Do powtarzalnego, deterministycznego wyczyszczenia zbioru treningowego i walidacyjnego służy skrypt [src/prepare_data.py](src/prepare_data.py).
 
 1. **Uruchomienie w terminalu Antigravity z głównego katalogu projektu:**
    ```powershell
@@ -125,14 +125,15 @@ Do powtarzalnego, deterministycznego wyczyszczenia zbioru treningowego służy s
    *(lub po uprzedniej aktywacji wirtualnego środowiska: `python src/prepare_data.py`)*
 
 2. **Działanie skryptu:**
-   * Wczytuje zbiór surowy [data/raw/orders_train_raw.csv](data/raw/orders_train_raw.csv) (tryb read-only, bez modyfikacji oryginału).
-   * Usuwa identyczne powtórzone wiersze (redukcja z 255 do 252 wierszy).
+   * Wczytuje zbiory surowe [data/raw/orders_train_raw.csv](data/raw/orders_train_raw.csv) oraz [data/raw/orders_validation.csv](data/raw/orders_validation.csv) (tryb read-only, bez modyfikacji oryginałów).
+   * Usuwa powtórzone wiersze (trening: redukcja z 255 do 252 wierszy; walidacja: 84 wiersze bez duplikatów).
    * Standaryzuje kolumnę `promo` (zamienia tekst `' yes '` na `1`, rzutuje na typ `int64`).
    * Waliduje format dat (ISO `YYYY-MM-DD`), weryfikuje brak duplikatów i sortuje chronologicznie.
    * Obsługuje wartości ujemne `orders`: zamienia je na brak (`NaN`) i dodaje kolumnę flagi `orders_invalid` (`1` dla wartości ujemnych, `0` dla poprawnych).
-   * Zachowuje braki w `planned_ad_spend_pln` i `orders` bez imputacji.
-   * Weryfikuje strukturę danych i zgłasza błąd (`ValueError`) przy nieoczekiwanym formacie danych lub braku kolumn zamiast zwracać pusty wynik.
-   * Zapisuje oczyszczony plik wynikowy do [data/processed/orders_train.csv](data/processed/orders_train.csv).
+   * Zachowuje braki bez imputacji (w walidacji cel `orders` pozostaje nienaruszony, mediana budżetu nie jest liczona).
+   * Dołącza cechę `day_of_week` (0-6) z [data/raw/calendar.csv](data/raw/calendar.csv) bez dołączania `is_weekend`.
+   * Przeprowadza automatyczne kontrole integralności (unikalność klucza kalendarza, brak fan-out, stałość sum `orders`, brak wspólnych dat, sekwencyjność czasowa).
+   * Zapisuje oczyszczone zbiory do [data/processed/orders_train.csv](data/processed/orders_train.csv) oraz [data/processed/orders_validation.csv](data/processed/orders_validation.csv).
 
 ### 5. Uruchomienie testów jednostkowych (Próby sprawdzające)
 Do automatycznej weryfikacji poprawności reguł czyszczenia na izolowanych próbkach danych służy skrypt [tests/test_prepare_data.py](tests/test_prepare_data.py).
@@ -221,5 +222,24 @@ Dokumentacja założeń modelowania prognostycznego znajduje się w pliku [repor
 * **Cel:** Dobowa prognoza popytu dla magazynu ($t+1$).
 * **Zależności:** Biblioteka `scikit-learn` została dodana do [requirements.txt](requirements.txt).
 * **Modele i metryka:** Porównanie `DecisionTreeRegressor` z modelem bazowym `DummyRegressor(strategy='median')` za pomocą metryki MAE na ustalonym zbiorze walidacyjnym (84 dni bez shuffle).
+
+### 10. Przetwarzanie zbioru walidacyjnego i cech kalendarza (Dzień 10)
+W ramach rozbudowy potoku danych przygotowano proces walidacyjny oraz złączenie cech czasowych z kalendarza:
+* **Dane wejściowe:** [data/raw/orders_validation.csv](data/raw/orders_validation.csv) (84 wiersze, zakres `2024-09-09` – `2024-12-01`).
+* **Zasady jakości i ochrona przed wyciekiem danych (Data Leakage):**
+  - Zastosowano te same reguły czyszczenia co dla treningu w skrypcie [src/prepare_data.py](src/prepare_data.py).
+  - Wartości docelowe `orders` w walidacji **nie są imputowane**.
+  - Nie jest obliczana mediana budżetu na zbiorze walidacyjnym (brak wycieku informacji do procesu uczenia).
+* **Dołączenie cechy kalendarzowej:**
+  - Dołączono kolumnę `day_of_week` (0 = poniedziałek, ..., 6 = niedziela) z [data/raw/calendar.csv](data/raw/calendar.csv) po kluczu `date`.
+  - Kolumna `is_weekend` **nie** została dodana do cech modelu.
+* **Kontrole integralności i rygor podziału czasowego:**
+  - **Liczności:** Trening: 252 daty (248 poprawnych celów, 4 braki), Walidacja: 84 daty (84 poprawne cele, 0 braków).
+  - **Brak fan-out:** Liczba wierszy i suma `orders` przed i po złączeniu z kalendarzem są identyczne (suma trening: 20 933.0, suma walidacja: 7 492.0).
+  - **Rozłączność czasowa:** $\text{Trening} \cap \text{Walidacja} = \emptyset$ (brak wspólnych dat).
+  - **Sekwencyjność:** Zbiór walidacyjny rozpoczyna się `2024-09-09`, ściśle po końcu treningu (`2024-09-08`).
+* **Pliki wynikowe:** [data/processed/orders_train.csv](data/processed/orders_train.csv) oraz [data/processed/orders_validation.csv](data/processed/orders_validation.csv).
+* **Szczegółowy audyt:** Pełny raport kontroli złączenia i podziału czasowego znajduje się w Sekcji 11 raportu [reports/quality.md](reports/quality.md).
+
 
 
