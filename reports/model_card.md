@@ -250,16 +250,35 @@ Zgodnie z metodyką projektu sprawdzono wyłącznie jeden dodatkowy wariant hipe
    - **Próba ucząca:** wyłącznie 248 poprawnych celów treningowych (brak łączenia treningu z walidacją do ponownego uczenia przed testem).
 
 
-### 10.6. Zamrożenie modeli (Serialization) i ograniczenia
+### 10.6. Zamrożenie modeli (Serialization), wersje bibliotek i ograniczenia
 Ostatecznie wybrane modele zostały seryjnie utrwalone w formacie binarnym w katalogu `models/`:
 1. [models/baseline.joblib](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/models/baseline.joblib) – zamrożony model bazowy `DummyRegressor(strategy='median')`.
 2. [models/selected_pipeline.joblib](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/models/selected_pipeline.joblib) – zamrożony pełny potok produkcyjny `Pipeline(preprocessor + DecisionTreeRegressor(max_depth=3, random_state=42))`.
 
+- **Data zamrożenia modeli:** `2026-10-06`
+- **Identyfikator commitu zamrożenia:** `502be4e` (oraz kolejny commit zatwierdzający niniejszy model card)
+- **Kluczowe wersje bibliotek środowiska (`requirements.txt`):**
+  - Python: `3.13.15`
+  - `scikit-learn`: `1.9.1`
+  - `joblib`: `1.6.0`
+  - `pandas`: `3.0.6`
+  - `numpy`: `2.5.3`
 - **Weryfikacja integralności:** Po ponownym załadowaniu obiektów przez `joblib.load()` wygenerowane predykcje walidacyjne były w 100% numerycznie zgodne z predykcjami pierwotnymi (`assert np.allclose(...)`).
 - **Ograniczenia produkcyjne:**
   - Model prognozuje popyt wyłącznie w oparciu o `day_of_week`, planowaną promocję `promo` oraz zatwierdzony budżet reklamowy `planned_ad_spend_pln`.
   - Nie uwzględnia nietypowych anomalii makroekonomicznych ani nagłych awarii serwisu.
   - Zbiór testowy pozostaje nienaruszony do momentu ostatecznego odbioru projektu.
+
+### 10.7. Plan ewaluacji na zbiorze testowym (Plan na Dzień 18)
+1. **Zbiór ewaluacyjny:** 84 dni ze zbioru testowego ([data/processed/orders_test.csv](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/data/processed/orders_test.csv)).
+2. **Ścisły rygor metodologiczny (No Retraining):**
+   - Ewaluacja zostanie przeprowadzona bezpośrednio na zamrożonych artefaktach binarnych (`models/selected_pipeline.joblib` oraz `models/baseline.joblib`).
+   - Obowiązuje **bezwzględny zakaz douczania modeli** oraz **zakaz łączenia zbioru treningowego i walidacyjnego** (`train + val`) przed otwarciem testu.
+3. **Zakres analizy:**
+   - Obliczenie końcowych metryk MAE na 84 dniach testu dla wybranego drzewa decyzyjnego oraz modelu bazowego.
+   - Weryfikacja czy przewaga modelu (~26% względnej redukcji MAE) utrzymuje się na niewidzianych danych testowych.
+   - Zapisanie ostatecznych wyników w `reports/metrics.csv` i podsumowanie w niniejszej karcie modelu.
+
 
 
 
