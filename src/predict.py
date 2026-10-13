@@ -222,12 +222,16 @@ def predict_single_day(
         model = load_production_model()
 
     # Konwersja i walidacja daty
-    if isinstance(date_val, str):
-        parsed_date = pd.to_datetime(date_val)
-    elif hasattr(date_val, "weekday"):
-        parsed_date = date_val
-    else:
-        raise ValueError(f"Niepoprawny format daty: {date_val}")
+    try:
+        if isinstance(date_val, str):
+            parsed_date = pd.to_datetime(date_val)
+        elif hasattr(date_val, "weekday"):
+            parsed_date = date_val
+        else:
+            raise ValueError(f"Nieobsługiwany typ daty: {type(date_val)}")
+    except Exception as e:
+        raise ValueError(f"Niepoprawny format daty: '{date_val}' (szczegóły: {e})")
+
 
     day_of_week = int(parsed_date.weekday())
 
@@ -250,7 +254,9 @@ def predict_single_day(
     validate_test_features(list(X_single.columns))
 
     pred = float(model.predict(X_single)[0])
-    return round(pred, 4)
+    return pred
+
+
 
 
 if __name__ == "__main__":

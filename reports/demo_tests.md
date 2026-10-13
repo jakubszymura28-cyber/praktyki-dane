@@ -110,3 +110,42 @@ Zestawiono prognozy wygenerowane przez aplikację formularza z rzeczywistymi zam
 - **Średnie MAE z 3 dni:** $\frac{4.5882 + 22.5882 + 15.9333}{3} = \frac{43.1097}{3} = \mathbf{14.3699}\text{ szt./dzień}$.
 - **Wniosek:** Aplikacja demonstracyjna `app.py` generuje prognozy w 100% tożsame z oficjalną ewaluacją testową zapisaną w `reports/test_predictions.csv`.
 
+---
+
+## 7. Porównanie niezaokrąglonych prognoz (Tolerancja $\le 0.000001$ zamówienia)
+
+Zgodnie z procedurą kontrolną zweryfikowano w terminalu IDE niezaokrąglone wartości zmiennoprzecinkowe (surowy typ `float64`) prognoz generowanych bezpośrednio przez model produkcyjny z potoku oraz funkcję `predict_single_day` z modułu [src/predict.py](../src/predict.py) dla 3 poprawnych wejść z tabeli prób (bez ponownego trenowania):
+
+| Wejście testowe | Parametry wejściowe | Surowa prognoza modelu z potoku | Prognoza `predict_single_day` | Różnica bezwzględna | Status tolerancji ($\le 10^{-6}$) |
+|---|---|:---:|:---:|:---:|:---:|
+| **Wejście 1** (Poniedziałek, brak promo) | Data: `2024-12-02`<br>Promo: `0`<br>Budżet: `500.00 PLN` | **83.411764705882** | **83.411764705882** | **0.000000000000** | **Zaliczone (PRAWDA)** |
+| **Wejście 2** (Środa, promocja) | Data: `2024-12-04`<br>Promo: `1`<br>Budżet: `850.00 PLN` | **111.066666666667** | **111.066666666667** | **0.000000000000** | **Zaliczone (PRAWDA)** |
+| **Wejście 3** (Niedziela, budżet 0) | Data: `2024-12-08`<br>Promo: `0`<br>Budżet: `0.00 PLN` | **64.253731343284** | **64.253731343284** | **0.000000000000** | **Zaliczone (PRAWDA)** |
+
+- **Wniosek numeryczny:** Dla wszystkich trzech wejść różnica bezwzględna wynosi dokładnie **0.000000000000**, co w 100% spełnia rygorystyczny warunek tolerancji $0.000001$ ($10^{-6}$) zamówienia.
+
+---
+
+## 8. Dwie kontrole odporności na błędy (Error Handling Controls)
+
+Przeprowadzono formalne testy odporności systemu na awarie wejść i zasobów, weryfikując, że błąd jest jawnie raportowany jako błąd, bez zwracania fikcyjnej prognozy `0`:
+
+### 8.1. Kontrola błędu 1: Wskazanie nieistniejącego pliku modelu
+- **Warunek testowy:** Próba załadowania modelu ze sztucznej, nieistniejącej ścieżki `models/non_existent_pipeline.joblib` (bez usuwania ani naruszania oryginalnych wag `models/selected_pipeline.joblib`).
+- **Oczekiwane zachowanie:** Natychmiastowe przerwanie operacji wnioskowania i zgłoszenie wyjątku braku pliku. Zakaz zwracania domyślnego zera.
+- **Rzeczywisty rezultat w terminalu / aplikacji:**
+  ```text
+  FileNotFoundError: Nie znaleziono pliku modelu produkcyjnego: models\non_existent_pipeline.joblib
+  ```
+- **Ocena:** **Zaliczone (1)** – błąd został obsłużony wprost, proces bezpiecznie zatrzymany, brak fałszywych predykcji. Działająca konfiguracja produkcyjna pozostała nienaruszona.
+
+### 8.2. Kontrola błędu 2: Przekazanie niepoprawnego formatu daty
+- **Warunek testowy:** Przekazanie uszkodzonego ciągu znaków daty `'niepoprawna-data-999'` bezpośrednio do funkcji wnioskującej `predict_single_day`.
+- **Oczekiwane zachowanie:** Wykrycie niepoprawnego formatu daty, odrzucenie wejścia i zgłoszenie błędu walidacji `ValueError`. Zakaz cichego przypisywania zera.
+- **Rzeczywisty rezultat w terminalu / aplikacji:**
+  ```text
+  ValueError: Niepoprawny format daty: 'niepoprawna-data-999' (szczegóły: Unknown datetime string format, unable to parse: niepoprawna-data-999)
+  ```
+- **Ocena:** **Zaliczone (1)** – funkcja walidująca rygorystycznie odrzuca nieprawidłowy format daty i uniemożliwia wygenerowanie fałszywego wyniku.
+
+
