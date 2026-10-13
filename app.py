@@ -76,31 +76,53 @@ def main():
     st.info(f"📅 **Automatycznie wyznaczony dzień tygodnia:** {dow_name}")
 
     # Budżet reklamowy w PLN
-    budget_input = st.number_input(
-        "Planowany budżet reklamowy w PLN (`planned_ad_spend_pln`):",
-        min_value=0.0,
-        max_value=100000.0,
-        value=575.28,
-        step=50.0,
-        format="%.2f",
-        help="Wartość domyślna odpowiada medianie ze zbioru treningowego (575.28 PLN). Wartości ujemne są zablokowane.",
-    )
+    col_b1, col_b2 = st.columns([2, 1])
+    with col_b2:
+        st.write("")
+        st.write("")
+        budget_missing = st.checkbox(
+            "Brak danych o budżecie",
+            value=False,
+            help="Zaznacz, jeśli budżet nie jest znany. Aplikacja użyje wyuczonej mediany treningowej (575.28 PLN).",
+        )
+
+    with col_b1:
+        budget_input = st.number_input(
+            "Planowany budżet reklamowy w PLN (`planned_ad_spend_pln`):",
+            value=575.28,
+            step=50.0,
+            format="%.2f",
+            disabled=budget_missing,
+            help="Zakres danych w treningu: 150.65 PLN – 999.71 PLN. Zero nie jest brakiem danych.",
+        )
 
     st.markdown("---")
     
     # Przycisk obliczenia prognozy
     if st.button("🚀 Oblicz prognozę zamówień", type="primary"):
         # Walidacja danych wejściowych
-        if budget_input < 0.0:
-            st.error("Błąd walidacji: Budżet reklamowy nie może być ujemny!")
+        effective_budget = None if budget_missing else budget_input
+
+        if not budget_missing and effective_budget < 0.0:
+            st.error("❌ Błąd walidacji: Planowany budżet reklamowy nie może być ujemny! Proszę podać wartość >= 0.")
             return
+
+        if not budget_missing and effective_budget > 999.71:
+            st.warning(
+                f"⚠️ **Ostrzeżenie o ekstrapolacji:** Wprowadzony budżet ({effective_budget:.2f} PLN) "
+                f"przekracza maksymalną wartość ze zbioru treningowego (999.71 PLN). "
+                f"Model drzewa decyzyjnego nie ekstrapoluje trendów liniowych i zastosuje regułę dla najwyższego przedziału."
+            )
+
+        if budget_missing:
+            st.info("ℹ️ **Brak wpisu budżetu:** Zastosowano wyuczoną medianę treningową (575.28 PLN) z potoku.")
 
         try:
             model = get_model()
             prediction = predict_single_day(
                 date_val=date_input,
                 promo_val=promo_val,
-                planned_ad_spend_pln=budget_input,
+                planned_ad_spend_pln=effective_budget,
                 model=model,
             )
 
@@ -113,15 +135,17 @@ def main():
                 help="Punktowa prognoza wyznaczona przez liść zamrożonego drzewa decyzyjnego.",
             )
 
+            budget_display = "Mediana z treningu (575.28 PLN)" if budget_missing else f"{effective_budget:.2f} PLN"
             st.markdown(
                 f"""
                 **Podsumowanie wejść modelu:**
                 - **Data:** `{date_input.strftime('%Y-%m-%d')}` ({dow_name})
                 - **Promocja (`promo`):** `{promo_val}` ({promo_choice})
-                - **Planowany budżet (`planned_ad_spend_pln`):** `{budget_input:.2f} PLN`
+                - **Planowany budżet (`planned_ad_spend_pln`):** `{budget_display}`
                 - **Użyty model:** `DecisionTreeRegressor(max_depth=3, random_state=42)` w potoku `Pipeline`
                 """
             )
+
 
             st.info(
                 "ℹ️ **Informacja o niepewności:** Zgodnie z metodyką projektu model generuje prognozę punktową. "

@@ -81,16 +81,19 @@ Formularz demonstracyjny zostanie przygotowany jako aplikacja webowa (np. z uży
 
 ## 5. Zestawienie sześciu prób demonstracyjnych formularza (Manual Testing Log)
 
-W tabeli poniżej zarejestrowano 6 prób weryfikacji działania interaktywnego formularza:
+Zgodnie z procedurą sprawdzono empiryczny zakres budżetu ze zbioru treningowego (`150.65 PLN` do `999.71 PLN`, mediana `575.28 PLN`). Przeprowadzono 6 kontrolowanych prób w lokalnym interfejsie:
 
-| Nr próby | Testowany scenariusz biznesowy | Data wejściowa | Promocja (`promo`) | Budżet (`planned_ad_spend_pln`) | Obliczona prognoza | Obserwacje i walidacja |
-|:---:|---|:---:|:---:|:---:|:---:|---|
-| **1** | Dzień powszedni bez promocji (budżet medianowy) | `2024-12-02` (Poniedziałek, DOW=0) | Nie (`0`) | `575.28 PLN` | **83.4 szt.** (`83.4118`) | Typowy dzień roboczy. Prognoza stabilna, brak wycieku. |
-| **2** | Wtorek z promocją (budżet umiarkowany) | `2024-12-03` (Wtorek, DOW=1) | Tak (`1`) | `575.28 PLN` | **83.4 szt.** (`83.4118`) | Przy budżecie <= 700 PLN reguła drzewa kieruje do liścia 83.4 szt. |
-| **3** | Środa z intensywną promocją (wysoki budżet) | `2024-12-04` (Środa, DOW=2) | Tak (`1`) | `900.00 PLN` | **111.1 szt.** (`111.0667`) | Budżet > 700 PLN i promocja podnoszą prognozę do 111.1 szt. |
-| **4** | Sobota handlowa (wysoki budżet bez promocji) | `2024-12-07` (Sobota, DOW=5) | Nie (`0`) | `850.00 PLN` | **100.6 szt.** (`100.6296`) | Weekendowy szczyt naturalnego popytu konsumenckiego. |
-| **5** | Test walidacji błędu: ujemny budżet reklamowy | Dowolna (np. `2024-12-05`) | Nie (`0`) | `-100.00 PLN` | *Blokada błędu* | Interfejs Streamlit blokuje wartość ujemną (`min_value=0.0`), a funkcja zgłasza `ValueError`. |
-| **6** | Niedziela przy zerowym budżecie reklamowym | `2024-12-08` (Niedziela, DOW=6) | Nie (`0`) | `0.00 PLN` | **64.3 szt.** (`64.2537`) | Niski popyt organiczny w niedzielę przy braku nakładów reklamowych. |
+| Przypadek | Wpisana data / promocja / budżet | Oczekiwane zachowanie | Rzeczywisty wynik (prognoza lub komunikat) | Ocena |
+|---|---|---|---|:---:|
+| **1. Poprawny dzień bez promocji** | Data: `2024-12-02` (Poniedziałek, DOW=0)<br>Promocja: `Nie` (0)<br>Budżet: `500.00 PLN` | Poprawne obliczenie punktowej prognozy popytu bez ostrzeżeń i błędów. | **Prognoza: 83.4 szt.** (`83.4118`) | **Zaliczone (1)** |
+| **2. Poprawny dzień z promocją** | Data: `2024-12-04` (Środa, DOW=2)<br>Promocja: `Tak` (1)<br>Budżet: `850.00 PLN` | Poprawne obliczenie wyższej prognozy z uwzględnieniem akcji promocyjnej i wyższego budżetu. | **Prognoza: 111.1 szt.** (`111.0667`) | **Zaliczone (1)** |
+| **3. Budżet 0 (Zero nie jest brakiem)** | Data: `2024-12-08` (Niedziela, DOW=6)<br>Promocja: `Nie` (0)<br>Budżet: `0.00 PLN` | Poprawne wykonanie prognozy z zerowym budżetem; brak traktowania zera jako braku danych; brak imputacji. | **Prognoza: 64.3 szt.** (`64.2537`) | **Zaliczone (1)** |
+| **4. Brak budżetu (Imputacja medianą)** | Data: `2024-12-02` (Poniedziałek, DOW=0)<br>Promocja: `Nie` (0)<br>Budżet: Zaznaczono *Brak danych o budżecie* (`None`) | Komunikat o użyciu wyuczonej mediany treningowej (575.28 PLN) oraz obliczenie prognozy z automatyczną imputacją w potoku. | Komunikat: *„ℹ️ Brak wpisu budżetu: Zastosowano wyuczoną medianę treningową (575.28 PLN) z potoku”*<br>**Prognoza: 83.4 szt.** (`83.4118`) | **Zaliczone (1)** |
+| **5. Budżet ujemny (Walidacja błędu)** | Data: `2024-12-05` (Czwartek, DOW=3)<br>Promocja: `Nie` (0)<br>Budżet: `-50.00 PLN` | Odrzucenie wartości ujemnej, zatrzymanie procesu wnioskowania i wyświetlenie czytelnego komunikatu błędu walidacji. | Komunikat błędu: *„❌ Błąd walidacji: Planowany budżet reklamowy nie może być ujemny! Proszę podać wartość >= 0.”* (brak prognozy) | **Zaliczone (1)** |
+| **6. Bardzo wysoki budżet spoza treningu** | Data: `2024-12-04` (Środa, DOW=2)<br>Promocja: `Tak` (1)<br>Budżet: `5000.00 PLN` *(zakres treningu: max 999.71 PLN)* | Ostrzeżenie o ekstrapolacji poza zakres treningowy oraz zastosowanie reguły decyzyjnej najwyższego liścia drzewa. | Ostrzeżenie: *„⚠️ Ostrzeżenie o ekstrapolacji: Wprowadzony budżet (5000.00 PLN) przekracza maksymalną wartość ze zbioru treningowego (999.71 PLN)...”*<br>**Prognoza: 111.1 szt.** (`111.0667`) | **Zaliczone (1)** |
+
+- **Podsumowanie prób:** Wszystkie **6 z 6 prób (100.0%)** zakończyły się sukcesem zgodnie ze zdefiniowanymi regułami. Nie stwierdzono rozbieżności wymagających poprawek.
+
 
 ---
 
