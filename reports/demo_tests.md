@@ -76,3 +76,34 @@ Formularz demonstracyjny zostanie przygotowany jako aplikacja webowa (np. z uży
 | **Typ predykcji** | Punktowa predykcja regresyjna z liścia drzewa | **100% Zgodny** (Sekcja 6) |
 | **Brak przedziału pewności** | Brak estymacji przedziałowej w metrics.csv i model_card | **100% Zgodny** (Sekcja 6 i 11) |
 | **Ostrzeżenie etyczne i operacyjne** | Zakaz automatycznych decyzji kadrowych, dane syntetyczne | **100% Zgodny** (Sekcja 12) |
+
+---
+
+## 5. Zestawienie sześciu prób demonstracyjnych formularza (Manual Testing Log)
+
+W tabeli poniżej zarejestrowano 6 prób weryfikacji działania interaktywnego formularza:
+
+| Nr próby | Testowany scenariusz biznesowy | Data wejściowa | Promocja (`promo`) | Budżet (`planned_ad_spend_pln`) | Obliczona prognoza | Obserwacje i walidacja |
+|:---:|---|:---:|:---:|:---:|:---:|---|
+| **1** | Dzień powszedni bez promocji (budżet medianowy) | `2024-12-02` (Poniedziałek, DOW=0) | Nie (`0`) | `575.28 PLN` | **83.4 szt.** (`83.4118`) | Typowy dzień roboczy. Prognoza stabilna, brak wycieku. |
+| **2** | Wtorek z promocją (budżet umiarkowany) | `2024-12-03` (Wtorek, DOW=1) | Tak (`1`) | `575.28 PLN` | **83.4 szt.** (`83.4118`) | Przy budżecie <= 700 PLN reguła drzewa kieruje do liścia 83.4 szt. |
+| **3** | Środa z intensywną promocją (wysoki budżet) | `2024-12-04` (Środa, DOW=2) | Tak (`1`) | `900.00 PLN` | **111.1 szt.** (`111.0667`) | Budżet > 700 PLN i promocja podnoszą prognozę do 111.1 szt. |
+| **4** | Sobota handlowa (wysoki budżet bez promocji) | `2024-12-07` (Sobota, DOW=5) | Nie (`0`) | `850.00 PLN` | **100.6 szt.** (`100.6296`) | Weekendowy szczyt naturalnego popytu konsumenckiego. |
+| **5** | Test walidacji błędu: ujemny budżet reklamowy | Dowolna (np. `2024-12-05`) | Nie (`0`) | `-100.00 PLN` | *Blokada błędu* | Interfejs Streamlit blokuje wartość ujemną (`min_value=0.0`), a funkcja zgłasza `ValueError`. |
+| **6** | Niedziela przy zerowym budżecie reklamowym | `2024-12-08` (Niedziela, DOW=6) | Nie (`0`) | `0.00 PLN` | **64.3 szt.** (`64.2537`) | Niski popyt organiczny w niedzielę przy braku nakładów reklamowych. |
+
+---
+
+## 6. Porównanie trzech prognoz z rzeczywistym zbiorem testowym (`reports/test_predictions.csv`)
+
+Zestawiono prognozy wygenerowane przez aplikację formularza z rzeczywistymi zamówieniami odnotowanymi w zbiorze testowym:
+
+| Data (`date`) | Dzień tygodnia | Promocja (`promo`) | Budżet testowy | Prognoza z formularza ($\hat{y}$) | Rzeczywistość testu ($y$) | Błąd bezwzględny ($|y - \hat{y}|$) | Status zgodności z plikiem CSV |
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **2024-12-02** | Poniedziałek (`0`) | `0` (Nie) | `502.82 PLN` | **83.4118 szt.** | **88.0 szt.** | **4.5882 szt.** | Identyczny z `test_predictions.csv` (wiersz 2) |
+| **2024-12-03** | Wtorek (`1`) | `0` (Nie) | `631.18 PLN` | **83.4118 szt.** | **106.0 szt.** | **22.5882 szt.** | Identyczny z `test_predictions.csv` (wiersz 3) |
+| **2024-12-04** | Środa (`2`) | `1` (Tak) | `834.78 PLN` | **111.0667 szt.** | **127.0 szt.** | **15.9333 szt.** | Identyczny z `test_predictions.csv` (wiersz 4) |
+
+- **Średnie MAE z 3 dni:** $\frac{4.5882 + 22.5882 + 15.9333}{3} = \frac{43.1097}{3} = \mathbf{14.3699}\text{ szt./dzień}$.
+- **Wniosek:** Aplikacja demonstracyjna `app.py` generuje prognozy w 100% tożsame z oficjalną ewaluacją testową zapisaną w `reports/test_predictions.csv`.
+

@@ -190,5 +190,69 @@ def evaluate_test_set() -> Dict[str, Any]:
     }
 
 
+def load_production_model(model_path: Path = None) -> Any:
+    """Wczytuje zaufany, zamrożony potok produkcyjny z models/selected_pipeline.joblib."""
+    if model_path is None:
+        resolved_models_dir = resolve_path(MODELS_DIR)
+        model_path = resolved_models_dir / "selected_pipeline.joblib"
+    else:
+        model_path = resolve_path(Path(model_path))
+
+    if not model_path.exists():
+        raise FileNotFoundError(f"Nie znaleziono pliku modelu produkcyjnego: {model_path}")
+
+    pipeline = joblib.load(model_path)
+    return pipeline
+
+
+def predict_single_day(
+    date_val: Any,
+    promo_val: int,
+    planned_ad_spend_pln: float,
+    model: Any = None,
+) -> float:
+    """Wspólna funkcja wnioskowania dla pojedynczego dnia (używana m.in. przez aplikację demo).
+
+    - Wyznacza day_of_week automatycznie z daty (0=poniedziałek, ..., 6=niedziela).
+    - Waliduje dane wejściowe (brak ujemnego budżetu, dozwolone promo 0 lub 1).
+    - Przekazuje wyłącznie 3 cechy wejściowe (day_of_week, promo, planned_ad_spend_pln).
+    - Nie wywołuje .fit() ani nie przelicza mediany budżetu (używa transformacji z potoku).
+    """
+    if model is None:
+        model = load_production_model()
+
+    # Konwersja i walidacja daty
+    if isinstance(date_val, str):
+        parsed_date = pd.to_datetime(date_val)
+    elif hasattr(date_val, "weekday"):
+        parsed_date = date_val
+    else:
+        raise ValueError(f"Niepoprawny format daty: {date_val}")
+
+    day_of_week = int(parsed_date.weekday())
+
+    # Walidacja flagi promo
+    if promo_val not in (0, 1):
+        raise ValueError(f"Niepoprawna flaga promo: {promo_val}. Oczekiwano 0 lub 1.")
+
+    # Walidacja budżetu
+    if planned_ad_spend_pln is not None and planned_ad_spend_pln < 0:
+        raise ValueError(f"Planowany budżet reklamowy nie może być ujemny! Otrzymano: {planned_ad_spend_pln}")
+
+    # Przygotowanie ramki 3 cech
+    X_single = pd.DataFrame([{
+        "day_of_week": day_of_week,
+        "promo": int(promo_val),
+        "planned_ad_spend_pln": float(planned_ad_spend_pln) if planned_ad_spend_pln is not None else np.nan,
+    }])
+
+    # Weryfikacja braku zabronionych kolumn
+    validate_test_features(list(X_single.columns))
+
+    pred = float(model.predict(X_single)[0])
+    return round(pred, 4)
+
+
 if __name__ == "__main__":
     evaluate_test_set()
+

@@ -315,6 +315,20 @@ W ramach finalizacji etapu modelowania utrwalono wybrane modele oraz przeprowadz
   - Największa redukcja błędu nastąpiła w soboty (spadek błędu MAE z 28.83 do 12.98 szt./dzień).
   - Względna redukcja błędu MAE wyniosła **26.30%** (spadek z 16.21 do 11.95 szt./dzień na walidacji).
 
+### 16. Aplikacja demonstracyjna Streamlit (Dzień 18)
+W projekcie wdrożono lokalną aplikację demonstracyjną `app.py` służącą do interaktywnego prognozowania dziennej liczby zamówień na dzień jutrzejszy ($t+1$). Aplikacja korzysta z zamrożonego potoku `models/selected_pipeline.joblib` i wspólnej funkcji `src.predict.predict_single_day`.
+
+#### Sprawdzone polecenie startu aplikacji (PowerShell w głównym folderze):
+```powershell
+.\.venv\Scripts\python.exe -m streamlit run app.py --server.address 127.0.0.1 --server.port 8501
+```
+Po uruchomieniu otwórz w przeglądarce adres: **http://127.0.0.1:8501**.  
+*(Jeśli port 8501 jest zajęty, zastąp `8501` przez `8502` i otwórz adres http://127.0.0.1:8502).*
+
+#### Sposób zatrzymania aplikacji:
+- Aby bezpiecznie zatrzymać działającą aplikację, przejdź do okna terminala, w którym została uruchomiona, i naciśnij skrót klawiszowy **`Ctrl + C`**. Nie zatrzymuj przypadkowych procesów systemowych.
+
+
 
 
 
