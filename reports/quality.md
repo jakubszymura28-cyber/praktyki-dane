@@ -257,6 +257,33 @@ Zgodnie z zasadą Fail-Fast, w potoku `src/prepare_data.py` sprawdzono:
 | **Zasada traktowania braków celu** | Brak imputacji (4 braki) | Brak imputacji (0 braków) | Rygor metodologiczny zachowany |
 | **Mediana budżetu reklamowego** | Wyliczana wyłącznie na treningu | **Brak liczenia mediany na walidacji** | Ochrona przed wyciekiem wiedzy o walidacji |
 
+---
+
+## 12. Kontrola jakości i walidacja zbioru testowego `orders_test.csv` (Dzień 17)
+
+W ramach etapu końcowej ewaluacji modelu przeprowadzono formalne procedury kontrolne surowego zbioru testowego (`data/raw/orders_test.csv`) oraz jego wersji oczyszczonej ze złączeniem kalendarza (`data/processed/orders_test.csv`).
+
+### 12.1. Zgodność schematu kolumn i liczności
+- **Wymagane kolumny:** `['date', 'promo', 'planned_ad_spend_pln', 'orders', 'visits', 'revenue_pln']` – 100% zgodności ze schematem.
+- **Liczba wierszy i dat:** dokładnie **84 daty** (zakres od `2024-12-02` do `2025-02-23`).
+- **Cele zamówień (`orders`):** dokładnie **84 poprawne cele**, 0 braków danych (`NaN`), wartości wyłącznie dodatnie (minimum: 46 szt., maksimum: 134 szt.), suma zamówień: 7 597.0 szt.
+- **Kolumna `promo`:** wartości binarne (0 i 1), brak niespójnych wpisów tekstowych.
+- **Kolumna `planned_ad_spend_pln`:** 83 wartości wypełnione, 1 brak danych (`NaN`) – brak ten zostanie uzupełniony wyuczoną medianą z treningu (575.275 PLN) wewnątrz potoku regresji, bez liczenia nowej mediany na teście.
+
+### 12.2. Kontrola połączenia z kalendarzem (LEFT JOIN po kolumnie `date`)
+- **Unikalność i dopasowanie:** 100% dat testowych (84 z 84) znajduje się w `data/raw/calendar.csv`.
+- **Brak efektu fan-out:** 84 wiersze przed złączeniem $\rightarrow$ 84 wiersze po złączeniu (różnica: 0).
+- **Zachowanie sumy poprawnych `orders`:** suma zamówień przed = 7 597.0 szt., po = 7 597.0 szt. (różnica: 0.0).
+- **Cechy modelu:** dołączono cechę `day_of_week` (wartości 0–6). Kolumna `is_weekend` nie została dołączona do cech.
+
+### 12.3. Rygor podziału sekwencyjnego i rozłączności (Trening, Walidacja, Test)
+- **Okres po walidacji:** Zbiór walidacyjny kończy się `2024-12-01`, a zbiór testowy rozpoczyna się `2024-12-02` (bezpośrednia, ścisła ciągłość czasowa).
+- **Rozłączność dat:**
+  - $\text{Trening} \cap \text{Test} = \emptyset$ (0 wspólnych dat)
+  - $\text{Walidacja} \cap \text{Test} = \emptyset$ (0 wspólnych dat)
+- **Łączny bilans kalendarza:** $252\text{ (trening)} + 84\text{ (walidacja)} + 84\text{ (test)} = \mathbf{420\text{ dni}}$.
+- **Status kontroli:** **Wszystkie kryteria spełnione w 100% – dane gotowe do ewaluacji.**
+
 
 
 

@@ -5,3 +5,5 @@ DecisionTreeRegressor,train,11.1093,248,"max_depth=3, random_state=42","orders_t
 DecisionTreeRegressor,validation,11.9503,84,"max_depth=3, random_state=42","orders_validation.csv (v1, 84 cele)",0.008993,0.003811
 DecisionTreeRegressor,train,8.3212,248,"max_depth=5, random_state=42","orders_train.csv (v1, 248 poprawnych celow)",0.009629,0.004412
 DecisionTreeRegressor,validation,11.1029,84,"max_depth=5, random_state=42","orders_validation.csv (v1, 84 cele)",0.009629,0.004167
+DummyRegressor,test,17.8452,84,strategy='median',"orders_test.csv (v1, 84 cele)",0.0,0.000126
+DecisionTreeRegressor,test,14.093,84,"max_depth=3, random_state=42","orders_test.csv (v1, 84 cele)",0.0,0.005716

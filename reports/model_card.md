@@ -302,6 +302,35 @@ Ostatecznie wybrane modele zostały seryjnie utrwalone w formacie binarnym w kat
    - Weryfikacja czy przewaga modelu (~26% względnej redukcji MAE) utrzymuje się na niewidzianych danych testowych.
    - Zapisanie ostatecznych wyników w `reports/metrics.csv` i podsumowanie w niniejszej karcie modelu.
 
+---
+
+## 11. Oficjalne wyniki ewaluacji na zbiorze testowym (Dzień 17)
+
+Zgodnie z planem przeprowadzono jednorazową, oficjalną ewaluację zamrożonych modeli na 84 dniach zbioru testowego (`2024-12-02` do `2025-02-23`, plik [data/processed/orders_test.csv](../data/processed/orders_test.csv)) za pomocą dedykowanego modułu [src/predict.py](../src/predict.py), bez ponownego uczenia (*No Retraining*).
+
+### 11.1. Zestawienie końcowych metryk testowych
+Oba modele zostały ocenione na **dokładnie tych samych 84 dniach** testowych:
+
+| Model | Split (Zbiór) | Liczba dni ($N$) | MAE [szt./dzień] | Różnica bezwzględna ($\Delta \text{MAE}$) | Względna redukcja błędu względem Baseline |
+|---|:---:|:---:|:---:|:---:|:---:|
+| **Model bazowy (`DummyRegressor`)** | `test` | 84 | **17.8452 szt.** | — (punkt odniesienia) | — |
+| **Wybrany model (`DecisionTreeRegressor d=3`)** | `test` | 84 | **14.0930 szt.** | **-3.7522 szt./dzień** | **21.03%** |
+
+### 11.2. Porównanie stabilności metryk w cyklu życia modelu (Train $\rightarrow$ Val $\rightarrow$ Test)
+
+| Zbiór danych | Liczba dni ($N$) | MAE Baseline (`Dummy`) | MAE Wybrane Drzewo (`d=3`) | Przewaga modelu ($\Delta \text{MAE}$) | Względna poprawa |
+|---|:---:|:---:|:---:|:---:|:---:|
+| **Treningowy (`train`)** | 248 | 17.1815 szt. | 11.1093 szt. | -6.0722 szt. | 35.34% |
+| **Walidacyjny (`val`)** | 84 | 16.2143 szt. | 11.9503 szt. | -4.2640 szt. | 26.30% |
+| **Testowy (`test`)** | 84 | 17.8452 szt. | 14.0930 szt. | **-3.7522 szt.** | **21.03%** |
+
+### 11.3. Wnioski z ostatecznej oceny testowej
+1. **Potwierdzenie uogólniania (Generalizacji):** Wybrany model drzewa decyzyjnego ($d=3$) utrzymał wyraźną, stabilną przewagę nad modelem bazowym na całkowicie niewidzianym horyzoncie 84 dni testu (redukcja przeciętnego błędu o **3.75 paczki dziennie**, czyli **21.03%** mniejszy błąd niż stała mediana).
+2. **Nienaruszalność procedury:** Rezultat został zachowany bez wybierania kolejnych wariantów ani dopasowywania hiperparametrów pod zbiór testowy.
+3. **Artefakty wynikowe:**
+   - [reports/test_predictions.csv](test_predictions.csv) – szczegółowe dzienne prognozy dla wszystkich 84 dni testowych.
+   - [reports/metrics.csv](metrics.csv) – formalne metryki treningowe, walidacyjne i testowe.
+
 
 
 

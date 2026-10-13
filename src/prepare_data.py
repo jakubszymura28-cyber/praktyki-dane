@@ -239,10 +239,24 @@ def prepare_orders_validation(
     )
 
 
-def prepare_all_datasets() -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """Uruchamia pełny proces przygotowania danych dla treningu i walidacji wraz z kontrolami spójności."""
+def prepare_orders_test(
+    input_path: Path = Path("data/raw/orders_test.csv"),
+    output_path: Path = Path("data/processed/orders_test.csv"),
+    calendar_path: Optional[Path] = None
+) -> Tuple[pd.DataFrame, dict]:
+    """Przygotowanie zbioru testowego."""
+    return prepare_orders_dataset(
+        input_path=input_path,
+        output_path=output_path,
+        calendar_path=calendar_path,
+        dataset_name="test"
+    )
+
+
+def prepare_all_datasets() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Uruchamia pełny proces przygotowania danych dla treningu, walidacji i testu wraz z kontrolami spójności."""
     print("================================================================================")
-    print("ROZPOCZĘCIE PROCESU PRZYGOTOWANIA DANYCH (Trening i Walidacja)")
+    print("ROZPOCZĘCIE PROCESU PRZYGOTOWANIA DANYCH (Trening, Walidacja i Test)")
     print("================================================================================")
 
     # 1. Zbiór treningowy
@@ -265,36 +279,56 @@ def prepare_all_datasets() -> Tuple[pd.DataFrame, pd.DataFrame]:
     print(f"                   - Zakres dat: {df_val['date'].min()} do {df_val['date'].max()}")
     print(f"                   - Cecha day_of_week: dołączona (wartości: {sorted(df_val['day_of_week'].unique().tolist())})")
 
-    # 3. Kontrole spójności podziału czasowego (Kontrola Dnia 10)
-    print("\n>>> KROK 3: Walidacja relacji czasowych i rygoru podziału (Kontrola Dnia 10) <<<")
+    # 3. Zbiór testowy
+    print("\n>>> KROK 3: Przetwarzanie zbioru testowego (orders_test.csv) <<<")
+    df_test, stats_test = prepare_orders_test()
+    print(f"[Sukces Test] Zapisano {len(df_test)} wierszy do data/processed/orders_test.csv.")
+    print(f"              - Poprawne zamówienia: {int(df_test['orders'].notna().sum())} dni")
+    print(f"              - Braki (NaN): {int(df_test['orders'].isna().sum())} dni")
+    print(f"              - Suma poprawnych zamówień: {df_test['orders'].sum(skipna=True)} szt.")
+    print(f"              - Zakres dat: {df_test['date'].min()} do {df_test['date'].max()}")
+    print(f"              - Cecha day_of_week: dołączona (wartości: {sorted(df_test['day_of_week'].unique().tolist())})")
+
+    # 4. Kontrole spójności podziału czasowego (Trening, Walidacja, Test)
+    print("\n>>> KROK 4: Walidacja relacji czasowych i rygoru podziału sekwencyjnego <<<")
     # A. Liczności
     assert len(df_train) == 252, f"Błąd: Oczekiwano 252 dat treningowych, otrzymano {len(df_train)}!"
     assert df_train["orders"].notna().sum() == 248, f"Błąd: Oczekiwano 248 poprawnych celów w treningu, otrzymano {df_train['orders'].notna().sum()}!"
     assert len(df_val) == 84, f"Błąd: Oczekiwano 84 dat walidacyjnych, otrzymano {len(df_val)}!"
     assert df_val["orders"].notna().sum() == 84, f"Błąd: Oczekiwano 84 poprawnych celów w walidacji, otrzymano {df_val['orders'].notna().sum()}!"
-    print("[OK] Kontrola 1 (Liczności): Trening = 252 daty (248 poprawnych celów), Walidacja = 84 daty (84 poprawne cele).")
+    assert len(df_test) == 84, f"Błąd: Oczekiwano 84 dat testowych, otrzymano {len(df_test)}!"
+    assert df_test["orders"].notna().sum() == 84, f"Błąd: Oczekiwano 84 poprawnych celów w teście, otrzymano {df_test['orders'].notna().sum()}!"
+    print("[OK] Kontrola 1 (Liczności): Trening = 252 (248 poprawnych celów), Walidacja = 84 (84 cele), Test = 84 (84 cele). Suma = 420 dni.")
 
     # B. Brak wspólnych dat
-    overlapping_dates = set(df_train["date"]).intersection(set(df_val["date"]))
-    assert len(overlapping_dates) == 0, f"Błąd krytyczny: Wykryto wspólne daty między treningiem a walidacją: {overlapping_dates}!"
-    print("[OK] Kontrola 2 (Brak wspólnych dat): Zbiory są całkowicie rozłączne (brak wycieku danych).")
+    overlapping_tr_val = set(df_train["date"]).intersection(set(df_val["date"]))
+    overlapping_tr_test = set(df_train["date"]).intersection(set(df_test["date"]))
+    overlapping_val_test = set(df_val["date"]).intersection(set(df_test["date"]))
+    assert len(overlapping_tr_val) == 0, f"Błąd krytyczny: Wspólne daty trening/walidacja: {overlapping_tr_val}!"
+    assert len(overlapping_tr_test) == 0, f"Błąd krytyczny: Wspólne daty trening/test: {overlapping_tr_test}!"
+    assert len(overlapping_val_test) == 0, f"Błąd krytyczny: Wspólne daty walidacja/test: {overlapping_val_test}!"
+    print("[OK] Kontrola 2 (Brak wspólnych dat): Zbiory train, validation i test są w 100% rozłączne.")
 
-    # C. Początek walidacji po końcu treningu
+    # C. Sekwencyjność czasowa (train -> val -> test)
     train_end = df_train["date"].max()
     val_start = df_val["date"].min()
-    assert val_start > train_end, f"Błąd krytyczny: Początek walidacji ({val_start}) nie jest po końcu treningu ({train_end})!"
-    print(f"[OK] Kontrola 3 (Sekwencyjność czasowa): Walidacja rozpoczyna się {val_start}, bezpośrednio po końcu treningu {train_end}.")
+    val_end = df_val["date"].max()
+    test_start = df_test["date"].min()
+    assert val_start > train_end, f"Błąd: Początek walidacji ({val_start}) <= koniec treningu ({train_end})!"
+    assert test_start > val_end, f"Błąd: Początek testu ({test_start}) <= koniec walidacji ({val_end})!"
+    print(f"[OK] Kontrola 3 (Sekwencyjność czasowa): Walidacja ({val_start}) po treningu ({train_end}), Test ({test_start}) po walidacji ({val_end}).")
 
     # D. Weryfikacja cech modelu (day_of_week obecne, is_weekend nieobecne)
-    assert "day_of_week" in df_train.columns and "day_of_week" in df_val.columns, "Błąd: Brak kolumny day_of_week!"
-    assert "is_weekend" not in df_train.columns and "is_weekend" not in df_val.columns, "Błąd: Kolumna is_weekend nie powinna być dołączana do cech!"
-    print("[OK] Kontrola 4 (Cechy modelu): Dołączono day_of_week (0=poniedziałek, 6=niedziela). Kolumna is_weekend nie została dodana do cech.")
+    for name, df_check in [("trening", df_train), ("walidacja", df_val), ("test", df_test)]:
+        assert "day_of_week" in df_check.columns, f"Błąd: Brak day_of_week w {name}!"
+        assert "is_weekend" not in df_check.columns, f"Błąd: is_weekend wykryte w {name}!"
+    print("[OK] Kontrola 4 (Cechy modelu): Dołączono day_of_week we wszystkich zbiorach. Brak kolumny is_weekend.")
 
     print("\n================================================================================")
-    print("WSZYSTKIE KONTROLE PODZIAŁU CZASOWEGO ZAKOŃCZONE PEŁNYM SUKCESEM!")
+    print("WSZYSTKIE KONTROLE PODZIAŁU CZASOWEGO I TESTU ZAKOŃCZONE PEŁNYM SUKCESEM!")
     print("================================================================================")
 
-    return df_train, df_val
+    return df_train, df_val, df_test
 
 
 if __name__ == "__main__":
