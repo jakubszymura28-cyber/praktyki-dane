@@ -148,4 +148,46 @@ Przeprowadzono formalne testy odporności systemu na awarie wejść i zasobów, 
   ```
 - **Ocena:** **Zaliczone (1)** – funkcja walidująca rygorystycznie odrzuca nieprawidłowy format daty i uniemożliwia wygenerowanie fałszywego wyniku.
 
+---
+
+## 9. Ograniczenia prezentowane pod wynikiem oraz audyt braku treningu i braku usług AI
+
+### 9.1. Treść ograniczeń prezentowana pod wynikiem w formularzu (`app.py`)
+Pod każdym obliczonym wynikiem predykcji w interaktywnym formularzu wyświetlana jest bezpośrednio stała notatka o jednostce, danych i etyce:
+> **⚠️ Ograniczenia i jednostka wyniku:**  
+> - **Jednostka:** zamówienia `[szt.]` (dzienna łączna liczba złożonych i zrealizowanych zamówień/paczek).  
+> - **Źródło danych:** model korzysta wyłącznie z danych syntetycznych.  
+> - **Zakaz automatycznych decyzji:** prognoza nie służy do podejmowania automatycznych decyzji kadrowych (zatrudnianie, zwalnianie, obsada magazynu, premie) ani finansowych.  
+> *(Wartość niezaokrąglona zachowana do celów audytu, porównań i wyznaczania MAE: np. `83.41176471` szt.)*
+
+### 9.2. Wskazanie w kodzie: Skąd aplikacja wczytuje model?
+1. **W pliku [app.py](../app.py):**
+   - W liniach 34–37 model jest pobierany z pamięci podręcznej sesji Streamlit za pomocą funkcji:
+     ```python
+     @st.cache_resource(show_spinner="Wczytywanie zamrożonego potoku produkcyjnego...")
+     def get_model():
+         return load_production_model()
+     ```
+2. **W module [src/predict.py](../src/predict.py):**
+   - W liniach 193–204 funkcja `load_production_model()` wskazuje bezpośrednią, lokalną ścieżkę do zamrożonego pliku wag:
+     ```python
+     resolved_models_dir = resolve_path(MODELS_DIR)
+     model_path = resolved_models_dir / "selected_pipeline.joblib"
+     pipeline = joblib.load(model_path)
+     return pipeline
+     ```
+   - Model jest wczytywany wyłącznie z lokalnego artefaktu `models/selected_pipeline.joblib`.
+
+### 9.3. Wynik kontroli: Dowód braku treningu (`.fit()`) oraz braku zewnętrznych usług AI
+Przeprowadzono audyt kodu całej ścieżki wnioskowania aplikacji (`app.py` $\rightarrow$ `src/predict.py` $\rightarrow$ `models/selected_pipeline.joblib`):
+1. **Brak wywołania `.fit()` i `.fit_transform()`:**
+   - W całym module `app.py` oraz w funkcji wnioskowania `predict_single_day()` wywoływana jest wyłącznie metoda `model.predict(X_single)`.
+   - Obiekt `selected_pipeline` jest wczytywany jako uprzednio dopasowany potok. Podczas generowania prognoz wagi modelu ani reguły podziału nie ulegają jakiejkolwiek modyfikacji.
+2. **Brak ponownego przeliczania statystyk imputera:**
+   - W przypadku braku budżetu imputer korzysta ze statystyki `budget_imputer.statistics_[0] = 575.275 PLN` wyuczonej na etapie treningu. Żadna nowa mediana nie jest estymowana z danych wejściowych użytkownika.
+3. **Brak zewnętrznych usług AI i połączeń sieciowych:**
+   - Wnioskowanie odbywa się w 100% lokalnie na procesorze (CPU) w środowisku Pythona, bez użycia zewnętrznych modeli językowych (LLM), API czy endpointów chmurowych.
+   - Narzędzie jest w pełni offline'owym modelem regresyjnym biblioteki `scikit-learn` (`DecisionTreeRegressor`).
+
+
 

@@ -132,7 +132,18 @@ def main():
             st.metric(
                 label="Prognozowana dzienna liczba zamówień",
                 value=f"{prediction:.1f} szt.",
-                help="Punktowa prognoza wyznaczona przez liść zamrożonego drzewa decyzyjnego.",
+                help=f"Punktowa prognoza wyznaczona przez liść zamrożonego drzewa decyzyjnego. Wartość surowa: {prediction:.8f} szt.",
+            )
+
+            # Widoczny tekst ograniczeń, jednostki i zasad etycznych bezpośrednio pod wynikiem
+            st.markdown(
+                f"""
+                > **⚠️ Ograniczenia i jednostka wyniku:**  
+                > - **Jednostka:** zamówienia `[szt.]` (dzienna liczba złożonych i zrealizowanych paczek).  
+                > - **Źródło danych:** model korzysta wyłącznie z danych syntetycznych.  
+                > - **Zakaz automatycznych decyzji:** prognoza nie służy do podejmowania automatycznych decyzji kadrowych (zatrudnianie, zwalnianie, obsada, premie) ani finansowych.  
+                > *(Wartość niezaokrąglona zachowana do porównań i audytu MAE: `{prediction:.8f}` szt.)*
+                """
             )
 
             budget_display = "Mediana z treningu (575.28 PLN)" if budget_missing else f"{effective_budget:.2f} PLN"
@@ -145,6 +156,7 @@ def main():
                 - **Użyty model:** `DecisionTreeRegressor(max_depth=3, random_state=42)` w potoku `Pipeline`
                 """
             )
+
 
 
             st.info(
