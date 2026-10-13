@@ -1,5 +1,21 @@
 # Karta modelu (Model Card): Prognozowanie dziennej liczby zamówień
 
+> **📋 Metadane karty modelu (Executive Summary):**
+> | Wymiar specyfikacji | Wartość w projekcie | Plik źródłowy / Odnośnik |
+> |---|---|---|
+> | **Problem biznesowy** | Dobowa prognoza zapotrzebowania magazynu na paczki | [reports/model_card.md](model_card.md) |
+> | **Moment tworzenia prognozy** | Wieczór każdego dnia na dzień kolejny ($t+1$) | Sekcja 1 |
+> | **Wybrany model produkcyjny** | `DecisionTreeRegressor` w potoku `Pipeline` | [models/selected_pipeline.joblib](../models/selected_pipeline.joblib) |
+> | **Hiperparametry** | `max_depth=3, random_state=42` | [reports/metrics.csv](metrics.csv) |
+> | **Dozwolone cechy wejściowe ($X$)** | `day_of_week`, `promo`, `planned_ad_spend_pln` | Sekcja 3 |
+> | **Zmienna celu ($y$)** | `orders` (dzienna liczba zamówień w sztukach) | Sekcja 2 |
+> | **Końcowy wynik testowy (84 dni)** | **MAE = 14.0930 szt./dzień** (redukcja błędu o **21.03%** vs Baseline 17.8452) | [reports/metrics.csv](metrics.csv) |
+> | **Data i commit zamrożenia** | `2026-10-06`, commit: `3f59de1` | Git log / Sekcja 8.4 |
+> | **Status wdrożeniowy** | **Zakończony sukcesem (Ewaluacja testowa przeprowadzona bez douczania)** | Sekcja 11 |
+> | **Główne ograniczenie operacyjne** | **Zakaz automatycznych decyzji kadrowych i finansowych**; dane syntetyczne | Sekcja 12 |
+
+---
+
 ## 1. Zadanie biznesowe i cel prognozy
 Wieczorem każdego dnia przewiduję liczbę zamówień na następny dzień. 
 
@@ -158,19 +174,21 @@ Model bazowy `DummyRegressor(strategy='median')` został wytrenowany na 248 wier
   - [reports/metrics.csv](metrics.csv) – zestawienie metryk MAE dla treningu i walidacji.
   - [reports/validation_predictions.csv](validation_predictions.csv) – tabela predykcji i błędów bezwzględnych dla każdego z 84 dni walidacji.
 
-| Zbiór danych | Liczba próbek ($N$) | Wyuczona stała predykcja | MAE (Średni błąd bezwzględny) |
-|---|:---:|:---:|:---:|
-| **Treningowy (`train`)** | 248 dni | 85.0 szt. | **17.1815 szt./dzień** |
-| **Walidacyjny (`validation`)** | 84 dni | 85.0 szt. | **16.2143 szt./dzień** |
+*Tabela 9.1: Zestawienie metryk modelu bazowego (Źródło danych: [reports/metrics.csv](metrics.csv))*
+| Zbiór danych | Liczba próbek ($N$) | Wyuczona stała predykcja | MAE (Średni błąd bezwzględny) | Plik źródłowy |
+|---|:---:|:---:|:---:|---|
+| **Treningowy (`train`)** | 248 dni | 85.0 szt. | **17.1815 szt./dzień** | `reports/metrics.csv` |
+| **Walidacyjny (`validation`)** | 84 dni | 85.0 szt. | **16.2143 szt./dzień** | `reports/metrics.csv` |
 
 ### 9.2. Ręczna kontrola dla 3 pierwszych dat walidacji
 W celu weryfikacji poprawności obliczeń wyznaczono błędy bezwzględne $|y_i - \hat{y}_i|$ dla pierwszych 3 dni zbioru walidacyjnego:
 
-| Data ($t$) | Rzeczywiste zamówienia ($y$) | Prognoza baseline ($\hat{y}$) | Różnica ($y - \hat{y}$) | Błąd bezwzględny $|y - \hat{y}|$ |
-|:---:|:---:|:---:|:---:|:---:|
-| `2024-09-09` | 78.0 szt. | 85.0 szt. | -7.0 szt. | **7.0 szt.** |
-| `2024-09-10` | 68.0 szt. | 85.0 szt. | -17.0 szt. | **17.0 szt.** |
-| `2024-09-11` | 56.0 szt. | 85.0 szt. | -29.0 szt. | **29.0 szt.** |
+*Tabela 9.2: Próba kontrolna pierwszych 3 dat walidacji (Źródło danych: [reports/validation_predictions.csv](validation_predictions.csv) oraz [data/processed/orders_validation.csv](../data/processed/orders_validation.csv))*
+| Data ($t$) | Rzeczywiste zamówienia ($y$) | Prognoza baseline ($\hat{y}$) | Różnica ($y - \hat{y}$) | Błąd bezwzględny $|y - \hat{y}|$ | Źródło wiersza |
+|:---:|:---:|:---:|:---:|:---:|---|
+| `2024-09-09` | 78.0 szt. | 85.0 szt. | -7.0 szt. | **7.0 szt.** | `validation_predictions.csv:L2` |
+| `2024-09-10` | 68.0 szt. | 85.0 szt. | -17.0 szt. | **17.0 szt.** | `validation_predictions.csv:L3` |
+| `2024-09-11` | 56.0 szt. | 85.0 szt. | -29.0 szt. | **29.0 szt.** | `validation_predictions.csv:L4` |
 
 - **Średni błąd bezwzględny pierwszych 3 dat:**
   $$\text{MAE}_{3\text{ dni}} = \frac{7.0 + 17.0 + 29.0}{3} = \frac{53.0}{3} \approx 17.6667\text{ szt./dzień}$$
@@ -190,18 +208,19 @@ W potoku [src/train.py](src/train.py) zintegrowano model kandydujący `DecisionT
   - **Czas dopasowania potoku (`fit_time`):** ~**9.66 ms** (0.0097 s). Zmierzono łączny czas dopasowania preprocesora (`fit` imputera budżetu i kodera OneHot) oraz budowy 3-poziomowego drzewa decyzyjnego na 248 próbkach.
   - **Czas generowania prognoz walidacji (`predict_time`):** ~**3.79 ms** (0.0038 s). Zmierzono łączny czas przekształcenia 84 próbek walidacyjnych przez preprocesor oraz przejścia przez reguły decyzyjne drzewa.
 
-### 10.2. Tabela porównawcza modeli (zapisana w `reports/metrics.csv`)
+### 10.2. Tabela porównawcza modeli na treningu i walidacji
+*Tabela 10.2: Porównanie modeli na etapie walidacji (Źródło danych: [reports/metrics.csv](metrics.csv))*
 
-| `model` | `split` | `mae` [szt.] | `evaluated_days` | `parameters` | `data_version` |
-|---|:---:|:---:|:---:|---|---|
-| **`DummyRegressor`** | `train` | **17.1815** | 248 | `strategy='median'` | `orders_train.csv (v1, 248 poprawnych celów)` |
-| **`DummyRegressor`** | `validation` | **16.2143** | 84 | `strategy='median'` | `orders_validation.csv (v1, 84 cele)` |
-| **`DecisionTreeRegressor`** | `train` | **11.1093** | 248 | `max_depth=3, random_state=42` | `orders_train.csv (v1, 248 poprawnych celów)` |
-| **`DecisionTreeRegressor`** | `validation` | **11.9503** | 84 | `max_depth=3, random_state=42` | `orders_validation.csv (v1, 84 cele)` |
-| **`DecisionTreeRegressor`** | `train` | **8.3212** | 248 | `max_depth=5, random_state=42` | `orders_train.csv (v1, 248 poprawnych celów)` |
-| **`DecisionTreeRegressor`** | `validation` | **11.1029** | 84 | `max_depth=5, random_state=42` | `orders_validation.csv (v1, 84 cele)` |
+| `model` | `split` | `mae` [szt.] | `evaluated_days` | `parameters` | `data_version` | Plik źródłowy |
+|---|:---:|:---:|:---:|---|---|---|
+| **`DummyRegressor`** | `train` | **17.1815** | 248 | `strategy='median'` | `orders_train.csv (v1, 248 poprawnych celów)` | `metrics.csv:L2` |
+| **`DummyRegressor`** | `validation` | **16.2143** | 84 | `strategy='median'` | `orders_validation.csv (v1, 84 cele)` | `metrics.csv:L3` |
+| **`DecisionTreeRegressor`** | `train` | **11.1093** | 248 | `max_depth=3, random_state=42` | `orders_train.csv (v1, 248 poprawnych celów)` | `metrics.csv:L4` |
+| **`DecisionTreeRegressor`** | `validation` | **11.9503** | 84 | `max_depth=3, random_state=42` | `orders_validation.csv (v1, 84 cele)` | `metrics.csv:L5` |
+| **`DecisionTreeRegressor`** | `train` | **8.3212** | 248 | `max_depth=5, random_state=42` | `orders_train.csv (v1, 248 poprawnych celów)` | `metrics.csv:L6` |
+| **`DecisionTreeRegressor`** | `validation` | **11.1029** | 84 | `max_depth=5, random_state=42` | `orders_validation.csv (v1, 84 cele)` | `metrics.csv:L7` |
 
-> **⚠️ Rygor ewaluacji i integralność:** Tabela obejmuje wyłącznie zbiory `train` i `validation` ocenione na tych samych 84 dniach. **Wyników zbioru testowego jeszcze nie ma** – zbiór testowy pozostaje odłożony i nietknięty. Trening nie został połączony z walidacją do ponownego uczenia.
+> **⚠️ Rygor ewaluacji i integralność:** Powyższa tabela przedstawia historyczny etap selekcji na zbiorach `train` i `validation`. Ostateczną weryfikację na nienaruszonym zbiorze testowym (`test`) zamieszczono w dedykowanej Sekcji 11. Trening nie został połączony z walidacją do ponownego uczenia.
 
 
 
@@ -220,6 +239,7 @@ W potoku [src/train.py](src/train.py) zintegrowano model kandydujący `DecisionT
 ### 10.4. Rozkład MAE według dnia tygodnia na walidacji (84 dni)
 W całym 84-dniowym oknie walidacyjnym każdy dzień tygodnia występuje **dokładnie 12 razy** ($12 \times 7 = 84$ dni). Zestawienie błędów wykazuje kluczowe źródła przewagi modelu kandydującego:
 
+*Tabela 10.4: Błędy według dnia tygodnia na walidacji (Źródło danych: [reports/validation_predictions.csv](validation_predictions.csv))*
 | Dzień tygodnia (`day_of_week`) | Liczba dni na walidacji | MAE Baseline (`Dummy`) | MAE Drzewo (`d=3`) | Różnica MAE | Wniosek biznesowy |
 |:---:|:---:|:---:|:---:|:---:|---|
 | **Poniedziałek (0)** | 12 | 10.67 szt. | 10.91 szt. | +0.24 szt. | Zbliżone błędy na początku tygodnia |
@@ -241,6 +261,7 @@ Pięć największych błędów walidacji wyeksportowano do pliku [reports/valida
 ### 10.5. Wybór ostatecznego rozwiązania i uzasadnienie przed otwarciem testu
 Zgodnie z metodyką projektu sprawdzono wyłącznie jeden dodatkowy wariant hiperparametru na tych samych 248 wierszach treningu i 84 walidacji (bez łączenia zbiorów):
 
+*Tabela 10.5: Porównanie kandydujących wariantów głębokości drzewa (Źródło danych: [reports/metrics.csv](metrics.csv))*
 | Model kandydujący | MAE trening (248 dni) | MAE walidacja (84 dni) | Luka (walidacja - trening) | Złożoność (liście) | Decyzja przed testem |
 |---|:---:|:---:|:---:|:---:|:---:|
 | **`DecisionTreeRegressor(max_depth=3)`** | **11.1093 szt.** | **11.9503 szt.** | **0.84 szt.** | Maks. 8 liści | **WYBRANY DO PRODUKCJI** |
@@ -361,6 +382,24 @@ Sprawdzono liczności prób ewaluacyjnych:
 ### 11.5. Artefakty wynikowe
 - [reports/test_predictions.csv](test_predictions.csv) – szczegółowe dzienne prognozy dla wszystkich 84 dni testowych.
 - [reports/metrics.csv](metrics.csv) – kompletne zestawienie metryk w cyklu życia modeli.
+
+---
+
+## 12. Ograniczenia biznesowe, etyka i wytyczne wdrożeniowe (Responsible AI)
+
+### 12.1. Zakaz automatycznych decyzji kadrowych i finansowych
+- **Narzędzie wspomagające, a nie decyzyjne:** Niniejszy model prognostyczny służy wyłącznie do **operacyjnego wsparcia planowania obsady magazynowej** przez człowieka (podejście *human-in-the-loop*).
+- **Bezwzględny zakaz automatyzacji HR i finansów:** Wyniki modelu **pod żadnym pozorem nie mogą być wykorzystywane do automatycznych decyzji kadrowych** (takich jak automatyczne zwalnianie pracowników, nakładanie kar dyscyplinarnych, redukcje etatów czy uzależnianie premii od błędu modelu) **ani do automatycznych decyzji finansowych** (np. sztywne blokowanie środków czy automatyczne cięcia budżetowe). Wszelkie decyzje personalne i zarządcze wymagają całościowej oceny sytuacji przez kierownictwo magazynu i dział personalny.
+
+### 12.2. Wymogi przed wdrożeniem w fizycznym sklepie e-commerce
+Wdrożenie opracowanego potoku prognostycznego w rzeczywistym przedsiębiorstwie e-commerce wymaga bezwzględnego spełnienia trzech warunków:
+1. **Zastąpienie danych syntetycznych realnymi danymi produkcyjnymi:** Wszystkie eksperymenty przeprowadzono na danych syntetycznych. Prawdziwe środowisko komercyjne charakteryzuje się znacznie wyższą zmiennością, nietypowymi awariami bramek płatności, anomaliami logistycznymi i zmianami preferencji konsumentów, co wymaga ponownej kalibracji na rzeczywistych danych historycznych.
+2. **Formalne uzgodnienie biznesowych kryteriów oceny (Asymetria kosztów):** Metryka MAE traktuje niedoszacowanie i przeszacowanie symetrycznie. W praktyce magazynowej koszt niedoszacowania (brak rąk do pracy, opóźnienia wysyłek, kary umowne od firm kurierskich, utrata reputacji) jest z reguły znacznie wyższy niż koszt lekkiego przeszacowania (niewielki nadmiar obsady). Konieczne jest zdefiniowanie biznesowej macierzy kosztów pomyłek z zespołem operacyjnym.
+3. **Regularny monitoring jakości nowych prognoz w czasie (Data Drift & Concept Drift):** Wdrożenie produkcyjne wymaga wdrożenia ciągłego monitorowania:
+   - Bieżącego błędu prognoz w oknach kroczących (np. MAE z ostatnich 7 i 30 dni),
+   - Zmian rozkładów cech wejściowych (np. nowe formaty kampanii marketingowych, nagłe zmiany stawek reklamowych),
+   - Opracowania procedury retrenowania modelu w kontrolowanych cyklach kwartalnych bez zakłócania ciągłości operacyjnej.
+
 
 
 
