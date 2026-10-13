@@ -90,3 +90,35 @@ Przygotuj ustrukturyzowane streszczenie w dokładnie 3 sekcjach:
 1. **Brak ekstrapolacji na ogólną niezawodność AI:** Wynik ten **nie oznacza**, że model asystenta AI jest ogólnie niezawodny, wolny od błędów we wszystkich domenach czy całkowicie odporny na halucynacje w skomplikowanych zagadnieniach inferencji statystycznej.
 2. **Ograniczona przestrzeń testowa:** Zestaw badał elementarną arytmetykę, podstawowy standard SQL (NULL), weryfikację istnienia danych, proste streszczenie tekstu oraz podstawowy przypadek jawnego wstrzyknięcia promptu w danych CSV.
 3. **Wnioski zgodne z dowodami:** Z niniejszego ćwiczenia wynika wyłącznie to, że model przy precyzyjnie skonstruowanych instrukcjach i jasnych kryteriach potrafi poprawnie zinterpretować stan repozytorium, wykazać determinizm rachunkowy i zachować wyznaczone ramy bezpieczeństwa.
+
+---
+
+## 6. Pięć zasad bezpiecznej i efektywnej współpracy z asystentem AI
+
+W oparciu o wnioski z przeprowadzonego audytu ustala się pięć kluczowych zasad codziennej pracy z asystentem AI w projektach analizy danych:
+
+1. **Podaję tylko dozwolone dane:**
+   - *Definicja:* Przekazywanie asystentowi wyłącznie danych jawnie dopuszczonych do danego zadania, zanonimizowanych i wolnych od informacji wrażliwych (PII, hasła, tokeny) oraz wolnych od cech ujawniających przyszłość.
+   - *Przykład z projektu:* Zdefiniowanie ściśle zamkniętej listy cech wejściowych `day_of_week`, `promo`, `planned_ad_spend_pln` i bezwzględne odcięcie cech operacyjnych `visits` oraz `revenue_pln`, które w horyzoncie $t+1$ stanowiłyby kardynalny wyciek danych (*Data Leakage*).
+2. **Zlecam mały zakres:**
+   - *Definicja:* Dzielenie złożonych procesów inżynierii danych i modelowania na niewielkie, modularne i weryfikowalne kroki zamiast powierzania asystentowi całego potoku w jednym, niekontrolowanym poleceniu.
+   - *Przykład z projektu:* Rozbicie prac na odrębne skrypty z pojedynczą odpowiedzialnością: `src/prepare_data.py` (czyszczenie i walidacja schematu), `src/train.py` (trening i serializacja potoku), `src/predict.py` (wnioskowanie na zbiorze testowym bez ponownego dopasowywania `.fit()`) oraz dedykowany zestaw testów jednostkowych `tests/`.
+3. **Sprawdzam źródła:**
+   - *Definicja:* Bezwzględna konfrontacja każdej wartości liczbowej, wniosku analitycznego czy cytatu podawanego przez model z plikami źródłowymi w repozytorium.
+   - *Przykład z projektu:* Weryfikacja, czy podana przez model średnia zamówień w promocji odpowiada dokładnie wartości z pliku [reports/by_promo.csv](by_promo.csv) (`103.47 szt.`), a mediana budżetu reklamowego wyliczonej wartości z `orders_train.csv` (`575.275 PLN`).
+4. **Niezależnie kontroluję wynik:**
+   - *Definicja:* Własnoręczne przeliczanie wyników arytmetycznych, uruchamianie niezależnych testów statystycznych i porównywanie macierzy prognoz zamiast bezkrytycznego akceptowania generowanego tekstu.
+   - *Przykład z projektu:* Ręczne wyliczenie błędu MAE dla pierwszych trzech dni testu ($|88 - 83.4118| + |106 - 83.4118| + |127 - 111.0667|)/3 = 14.3699$ szt./dzień i porównanie z kolumną błędu w [reports/test_predictions.csv](test_predictions.csv) oraz testy tożsamości `np.allclose == True`.
+5. **Zatwierdzam działania przed wykonaniem:**
+   - *Definicja:* Wymóg przedstawienia przez asystenta uporządkowanego planu działania w punktach przed przystąpieniem do pracy oraz bezwzględne wstrzymanie się z edycją plików do momentu uzyskania wyraźnej zgody człowieka.
+   - *Przykład z projektu:* Ścisłe egzekwowanie zasady, w której asystent przed jakąkolwiek modyfikacją kodu, skryptu czy raportu pyta o potwierdzenie użytkownika i czeka na wyraźne zatwierdzenie.
+
+### 6.1. Procedura natychmiastowego zatrzymania prac (Emergency Stop & Escalation)
+- **Sytuacja krytyczna wymagająca wstrzymania prac:**  
+  W przypadku wystąpienia żądania:
+  1. Użycia rzeczywistych, nieanonimizowanych danych osobowych klientów lub pracowników (PII),
+  2. Zautomatyzowania wiążących decyzji kadrowych (np. zwalnianie, karanie, redukcje etatów) lub finansowych wyłącznie na podstawie surowej prognozy modelu,
+  3. Deserializacji i uruchomienia niesprawdzonych plików wag `.joblib` / `.pkl` pobranych z zewnętrznego, niezaufanego źródła (zagrożenie wykonania dowolnego kodu – RCE),
+  4. Wykrycia próby wymuszenia wykonania poleceń wstrzykniętych w danych wejściowych (*Prompt Injection*),
+- **Działanie:** Praca zostaje **natychmiast bezwarunkowo zatrzymana**. Asystent nie podejmuje żadnych działań wykonawczych, a incydent/problem zostaje niezwłocznie udokumentowany i przekazany do formalnej oceny opiekuna praktyk.
+
