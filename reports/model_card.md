@@ -232,16 +232,23 @@ Pięć największych błędów walidacji wyeksportowano do pliku [reports/valida
 ### 10.5. Wybór ostatecznego rozwiązania i uzasadnienie przed otwarciem testu
 Zgodnie z metodyką projektu sprawdzono wyłącznie jeden dodatkowy wariant hiperparametru na tych samych 248 wierszach treningu i 84 walidacji (bez łączenia zbiorów):
 
-| Model kandydujący | MAE trening (248 dni) | MAE walidacja (84 dni) | Luka generalizacji | Złożoność (liście) | Decyzja przed testem |
+| Model kandydujący | MAE trening (248 dni) | MAE walidacja (84 dni) | Luka (walidacja - trening) | Złożoność (liście) | Decyzja przed testem |
 |---|:---:|:---:|:---:|:---:|:---:|
 | **`DecisionTreeRegressor(max_depth=3)`** | **11.1093 szt.** | **11.9503 szt.** | **0.84 szt.** | Maks. 8 liści | **WYBRANY DO PRODUKCJI** |
-| **`DecisionTreeRegressor(max_depth=5)`** | **8.3212 szt.** | **11.1029 szt.** | **2.78 szt.** | Maks. 32 liście | Odrzucony (ryzyko przeuczenia) |
+| **`DecisionTreeRegressor(max_depth=5)`** | **8.3212 szt.** | **11.1029 szt.** | **2.78 szt.** | Maks. 32 liście | Odrzucony (preferencja modelu prostszego) |
 
 #### Szczegółowe uzasadnienie decyzji inżynierskiej:
-1. **Preferencja prostszego modelu przy niemal równych wynikach (Brzytwa Ockhama):**
-   Różnica w błędzie walidacyjnym między wariantem o głębokości 5 a 3 wynosi zaledwie **0.8474 szt./dzień** ($11.10$ vs $11.95$), co jest wielkością marginalną w skali dobowego pakowania przesyłek magazynowych.
-2. **Ryzyko przeuczenia i stabilność uogólniania:**
-   W wariancie `max_depth=5` błąd treningowy spada drastycznie do $8.32$ szt., przez co luka między walidacją a treningiem rośnie ponad trzykrotnie (z $0.84$ do $2.78$ szt.). Wskazuje to, że drzewo o 32 potencjalnych liściach zaczyna dopasowywać się do szumu w danych uczących.
+1. **Analiza różnicy wyników – różnica bezwzględna a względna:**
+   - **Różnica bezwzględna:** Różnica w błędzie walidacyjnym między wariantem $d=3$ a $d=5$ wynosi $\Delta \text{MAE} = 11.9503 - 11.1029 = \mathbf{0.8474\text{ szt./dzień}}$ (mniej niż jedna paczka dziennie).
+   - **Różnica względna (udział różnicy w błędzie):** 
+     - Różnica ta stanowi $\mathbf{7.09\%}$ błędu walidacyjnego modelu prostszego ($\frac{0.8474}{11.9503} \times 100\%$).
+     - W odniesieniu do błędu modelu bazowego Baseline ($16.2143$) różnica ta wynosi $\mathbf{5.23\%}$ ($\frac{0.8474}{16.2143} \times 100\%$).
+     - W odniesieniu do średniego dziennego wolumenu zamówień na walidacji ($\sim 84.4\text{ szt./dzień}$) różnica ta stanowi zaledwie $\mathbf{\sim 1.0\%}$ dziennego obrotu magazynowego.
+   - *Uwaga pojęciowa:* Wartość $0.8474\text{ szt./dzień}$ jest wielkością bezwzględną wyrażoną w jednostkach celu, natomiast pojęcie różnicy względnej odnosi się ściśle do wyliczonej wartości procentowej ($7.09\%$).
+2. **Kwestia dopasowania, luki generalizacji i Brzytwy Ockhama:**
+   - Na zbiorze walidacyjnym wariant $d=5$ uzyskał formalnie niższy błąd MAE, dlatego z definicji **na tej próbie nie doszło do klasycznego przeuczenia** (overfitting zachodzi wtedy, gdy większe dopasowanie do treningu pogarsza wynik na walidacji).
+   - Większa luka między walidacją a treningiem ($2.78\text{ szt.}$ przy $d=5$ vs $0.84\text{ szt.}$ przy $d=3$) świadczy jednak o wyraźnie wyższej wariancji głębszego modelu i silniejszym dopasowaniu do specyfiki treningu ($8.32\text{ szt.}$ błędu treningowego).
+   - Wybór prostszego modelu ($d=3$) opiera się na **Brzytwie Ockhama i audytowalności operacyjnej**: drzewo o głębokości 3 generuje maksymalnie 8 liści, co pozwala kierownikowi magazynu na pełne zrozumienie i weryfikację każdej reguły decyzyjnej. Potencjalnie 4-krotne zwiększenie liczby liści (do 32) dla zysku poniżej 1 paczki na dobę uznano za nieuzasadnioną komplikację struktury modelu.
 3. **Specyfikacja wybranego i zamrożonego rozwiązania:**
    - **Wybrany model:** `DecisionTreeRegressor`
    - **Parametry hiperprzestrzeni:** `max_depth=3, random_state=42`
@@ -249,14 +256,13 @@ Zgodnie z metodyką projektu sprawdzono wyłącznie jeden dodatkowy wariant hipe
    - **Zmienna celu ($y$):** `orders`
    - **Próba ucząca:** wyłącznie 248 poprawnych celów treningowych (brak łączenia treningu z walidacją do ponownego uczenia przed testem).
 
-
 ### 10.6. Zamrożenie modeli (Serialization), wersje bibliotek i ograniczenia
 Ostatecznie wybrane modele zostały seryjnie utrwalone w formacie binarnym w katalogu `models/`:
-1. [models/baseline.joblib](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/models/baseline.joblib) – zamrożony model bazowy `DummyRegressor(strategy='median')`.
-2. [models/selected_pipeline.joblib](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/models/selected_pipeline.joblib) – zamrożony pełny potok produkcyjny `Pipeline(preprocessor + DecisionTreeRegressor(max_depth=3, random_state=42))`.
+1. [models/baseline.joblib](../models/baseline.joblib) – zamrożony model bazowy `DummyRegressor(strategy='median')`.
+2. [models/selected_pipeline.joblib](../models/selected_pipeline.joblib) – zamrożony pełny potok produkcyjny `Pipeline(preprocessor + DecisionTreeRegressor(max_depth=3, random_state=42))`.
 
 - **Data zamrożenia modeli:** `2026-10-06`
-- **Identyfikator commitu zamrożenia:** `502be4e` (oraz kolejny commit zatwierdzający niniejszy model card)
+- **Identyfikator commitu zamrożenia:** `3f59de1`
 - **Kluczowe wersje bibliotek środowiska (`requirements.txt`):**
   - Python: `3.13.15`
   - `scikit-learn`: `1.9.1`
@@ -269,8 +275,8 @@ Ostatecznie wybrane modele zostały seryjnie utrwalone w formacie binarnym w kat
   - Nie uwzględnia nietypowych anomalii makroekonomicznych ani nagłych awarii serwisu.
   - Zbiór testowy pozostaje nienaruszony do momentu ostatecznego odbioru projektu.
 
-### 10.7. Plan ewaluacji na zbiorze testowym (Plan na Dzień 18)
-1. **Zbiór ewaluacyjny:** 84 dni ze zbioru testowego ([data/processed/orders_test.csv](file:///c:/Users/Lenovo/Desktop/praktyki%20dane/data/processed/orders_test.csv)).
+### 10.7. Plan ewaluacji na zbiorze testowym (Plan na Dzień 17)
+1. **Zbiór ewaluacyjny:** 84 dni ze zbioru testowego ([data/processed/orders_test.csv](../data/processed/orders_test.csv)).
 2. **Ścisły rygor metodologiczny (No Retraining):**
    - Ewaluacja zostanie przeprowadzona bezpośrednio na zamrożonych artefaktach binarnych (`models/selected_pipeline.joblib` oraz `models/baseline.joblib`).
    - Obowiązuje **bezwzględny zakaz douczania modeli** oraz **zakaz łączenia zbioru treningowego i walidacyjnego** (`train + val`) przed otwarciem testu.
