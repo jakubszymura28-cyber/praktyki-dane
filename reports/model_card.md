@@ -308,28 +308,46 @@ Ostatecznie wybrane modele zostały seryjnie utrwalone w formacie binarnym w kat
 
 Zgodnie z planem przeprowadzono jednorazową, oficjalną ewaluację zamrożonych modeli na 84 dniach zbioru testowego (`2024-12-02` do `2025-02-23`, plik [data/processed/orders_test.csv](../data/processed/orders_test.csv)) za pomocą dedykowanego modułu [src/predict.py](../src/predict.py), bez ponownego uczenia (*No Retraining*).
 
-### 11.1. Zestawienie końcowych metryk testowych
-Oba modele zostały ocenione na **dokładnie tych samych 84 dniach** testowych:
+### 11.1. Kontrola wejść modelu i obsługa testowego braku budżetu
+- **Cechy wejściowe ($X$):** wyłącznie `day_of_week`, `promo`, `planned_ad_spend_pln`.
+- **Zmienna celu ($y$):** `orders` — potwierdzono programistycznie, że zmienna celu **nie występuje na liście cech wejściowych** (próba przekazania kolumn `orders`, `visits` lub `revenue_pln` rzuca błąd `ValueError` w funkcji `validate_test_features`).
+- **Obsługa testowego braku budżetu:**
+  - W całym 84-dniowym zbiorze testowym dokładnie w jednym dniu — **`2025-01-25`** (sobota, $day\_of\_week=5$, $promo=0$, $orders=95.0$) — wystąpiła pusta komórka budżetu reklamowego (`planned_ad_spend_pln = NaN`).
+  - Zamrożony w potoku [models/selected_pipeline.joblib](../models/selected_pipeline.joblib) komponent `SimpleImputer(strategy='median')` uzupełnił ten brak **wyuczoną wcześniej na treningu medianą równą dokładnie 575.275 PLN** (identyczną z zapisaną po treningu, brak liczenia nowej mediany na teście).
+  - Wygenerowana prognoza dla tego dnia wyniosła **109.1176 szt.** (błąd bezwzględny: **14.1176 szt.**).
 
-| Model | Split (Zbiór) | Liczba dni ($N$) | MAE [szt./dzień] | Różnica bezwzględna ($\Delta \text{MAE}$) | Względna redukcja błędu względem Baseline |
+### 11.2. Zestawienie wyników Train vs Validation vs Test (na podstawie [reports/metrics.csv](metrics.csv))
+
+Sprawdzono liczności prób ewaluacyjnych:
+- **Zbiór treningowy (`train`):** **248 dni** (ważne cele po odrzuceniu 4 braków z 252 dat kalendarza)
+- **Zbiór walidacyjny (`validation`):** **84 dni** (wszystkie 84 cele poprawne)
+- **Zbiór testowy (`test`):** **84 dni** (wszystkie 84 cele poprawne)
+- **Łączna liczba ocenionych dni:** $248 + 84 + 84 = \mathbf{416\text{ dni}}$ (z 420 dni w kalendarzu).
+
+| Model | Zbiór (`split`) | Liczba dni ($N$) | MAE [szt./dzień] | Różnica bezwzględna ($\Delta \text{MAE}$) | Względna redukcja błędu względem Baseline |
 |---|:---:|:---:|:---:|:---:|:---:|
-| **Model bazowy (`DummyRegressor`)** | `test` | 84 | **17.8452 szt.** | — (punkt odniesienia) | — |
-| **Wybrany model (`DecisionTreeRegressor d=3`)** | `test` | 84 | **14.0930 szt.** | **-3.7522 szt./dzień** | **21.03%** |
+| **`DummyRegressor`** | `train` | 248 | 17.1815 szt. | — (punkt odniesienia) | — |
+| **`DecisionTreeRegressor (d=3)`** | `train` | 248 | 11.1093 szt. | -6.0722 szt. | 35.34% |
+| **`DummyRegressor`** | `validation` | 84 | 16.2143 szt. | — (punkt odniesienia) | — |
+| **`DecisionTreeRegressor (d=3)`** | `validation` | 84 | 11.9503 szt. | -4.2640 szt. | 26.30% |
+| **`DummyRegressor`** | `test` | 84 | **17.8452 szt.** | — (punkt odniesienia) | — |
+| **`DecisionTreeRegressor (d=3)`** | `test` | 84 | **14.0930 szt.** | **-3.7522 szt./dzień** | **21.03%** |
 
-### 11.2. Porównanie stabilności metryk w cyklu życia modelu (Train $\rightarrow$ Val $\rightarrow$ Test)
+#### Analiza zmiany błędu MAE między walidacją a testem:
+- **Wzrost błędu wybranego drzewa ($d=3$):** Błąd MAE wzrósł z **11.9503 szt./dzień** na walidacji do **14.0930 szt./dzień** na teście, co oznacza wzrost przeciętnego błędu o **+2.1427 szt./dzień** (względny wzrost błędu o **+17.93%**).
+- **Wzrost błędu modelu bazowego (`Dummy`):** Błąd baseline'u wzrósł z **16.2143 szt./dzień** na walidacji do **17.8452 szt./dzień** na teście, co stanowi wzrost o **+1.6309 szt./dzień** (względny wzrost błędu o **+10.06%**).
+- **Utrzymanie przewagi konkurencyjnej:** Pomimo ogólnego wzrostu poziomu błędu w trudniejszym okresie testowym, wybrane drzewo decyzyjne utrzymało wyraźną i stabilną przewagę nad modelem odniesienia — na teście błąd drzewa był niższy o **3.7522 szt./dzień**, co odpowiada **21.03% względnej redukcji błędu** (na walidacji przewaga wynosiła 4.2640 szt./dzień, czyli 26.30%).
 
-| Zbiór danych | Liczba dni ($N$) | MAE Baseline (`Dummy`) | MAE Wybrane Drzewo (`d=3`) | Przewaga modelu ($\Delta \text{MAE}$) | Względna poprawa |
-|---|:---:|:---:|:---:|:---:|:---:|
-| **Treningowy (`train`)** | 248 | 17.1815 szt. | 11.1093 szt. | -6.0722 szt. | 35.34% |
-| **Walidacyjny (`val`)** | 84 | 16.2143 szt. | 11.9503 szt. | -4.2640 szt. | 26.30% |
-| **Testowy (`test`)** | 84 | 17.8452 szt. | 14.0930 szt. | **-3.7522 szt.** | **21.03%** |
+### 11.3. Ograniczenia interpretacji i hipoteza analityczna
+1. **Syntetyczny charakter danych:** Wszystkie badane zbiory pochodzą ze środowiska syntetycznego. Rzeczywiste zjawiska rynkowe, elastyczność popytowa oraz zachowania konsumentów w fizycznym sklepie e-commerce mogą charakteryzować się większym szumem losowym, nietypowymi anomaliami logistycznymi oraz bardziej złożoną dynamiką.
+2. **Pojedynczy horyzont testowy:** Zbiór testowy obejmuje ściśle jedno, 84-dniowe okno zimowe (od 2 grudnia 2024 r. do 23 lutego 2025 r.). Wyniki te nie stanowią gwarancji identycznej skuteczności w innych kwartałach (np. w okresie wiosenno-letnim) ani w innych latach operacyjnych.
+3. **🔬 Hipoteza analityczna dotycząca przyczyny wyższego błędu na teście:**  
+   Jako **hipotezę analityczną** przyjmuje się, że wyższy błąd predykcji obu modeli na teście wynika ze specyfiki okresu zimowego (szczyt zakupowy w IV kwartale przed świętami oraz wyprzedaże noworoczne w styczniu), w którym średni dobowy popyt wzrósł do $90.44\text{ szt./dzień}$ (z wieloma dniami przekraczającymi 120–134 zamówienia). Prosty model drzewa o głębokości 3 nie posiada informacji o upływie miesięcy ani o trendzie długoterminowym, operując wyłącznie na regułach wyznaczonych z danych z okresu styczeń–wrzesień 2024 r.  
+   *Zastrzeżenie metodologiczne: powyższe przypuszczenie stanowi hipotezę badawczą, a nie empirycznie udowodniony fakt.*
 
-### 11.3. Wnioski z ostatecznej oceny testowej
-1. **Potwierdzenie uogólniania (Generalizacji):** Wybrany model drzewa decyzyjnego ($d=3$) utrzymał wyraźną, stabilną przewagę nad modelem bazowym na całkowicie niewidzianym horyzoncie 84 dni testu (redukcja przeciętnego błędu o **3.75 paczki dziennie**, czyli **21.03%** mniejszy błąd niż stała mediana).
-2. **Nienaruszalność procedury:** Rezultat został zachowany bez wybierania kolejnych wariantów ani dopasowywania hiperparametrów pod zbiór testowy.
-3. **Artefakty wynikowe:**
-   - [reports/test_predictions.csv](test_predictions.csv) – szczegółowe dzienne prognozy dla wszystkich 84 dni testowych.
-   - [reports/metrics.csv](metrics.csv) – formalne metryki treningowe, walidacyjne i testowe.
+### 11.4. Artefakty wynikowe
+- [reports/test_predictions.csv](test_predictions.csv) – szczegółowe dzienne prognozy dla wszystkich 84 dni testowych.
+- [reports/metrics.csv](metrics.csv) – kompletne zestawienie metryk w cyklu życia modeli.
 
 
 
