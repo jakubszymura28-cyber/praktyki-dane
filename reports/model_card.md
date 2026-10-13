@@ -316,7 +316,20 @@ Zgodnie z planem przeprowadzono jednorazową, oficjalną ewaluację zamrożonych
   - Zamrożony w potoku [models/selected_pipeline.joblib](../models/selected_pipeline.joblib) komponent `SimpleImputer(strategy='median')` uzupełnił ten brak **wyuczoną wcześniej na treningu medianą równą dokładnie 575.275 PLN** (identyczną z zapisaną po treningu, brak liczenia nowej mediany na teście).
   - Wygenerowana prognoza dla tego dnia wyniosła **109.1176 szt.** (błąd bezwzględny: **14.1176 szt.**).
 
-### 11.2. Zestawienie wyników Train vs Validation vs Test (na podstawie [reports/metrics.csv](metrics.csv))
+### 11.2. Ręczna kontrola obliczeń dla 3 pierwszych dat testu (Weryfikacja agenta)
+W celu niezależnej weryfikacji poprawności obliczeń wyznaczono błędy bezwzględne $|y_i - \hat{y}_i|$ dla 3 pierwszych dni zbioru testowego:
+
+| Data ($t$) | Rzeczywiste zamówienia ($y$) | Prognoza drzewa ($\hat{y}$) | Prognoza baseline ($\hat{y}_{\text{base}}$) | Błąd bezwzględny drzewa $|y - \hat{y}|$ | Błąd bezwzględny baseline $|y - \hat{y}_{\text{base}}|$ | Zgodność z CSV |
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| `2024-12-02` | 88.0 szt. | 83.4118 szt. | 85.0 szt. | **4.5882 szt.** | 3.0000 szt. | **100%** |
+| `2024-12-03` | 106.0 szt. | 83.4118 szt. | 85.0 szt. | **22.5882 szt.** | 21.0000 szt. | **100%** |
+| `2024-12-04` | 127.0 szt. | 111.0667 szt. | 85.0 szt. | **15.9333 szt.** | 42.0000 szt. | **100%** |
+
+- **Średni błąd bezwzględny pierwszych 3 dat:**
+  $$\text{MAE}_{3\text{ dni}} = \frac{4.5882 + 22.5882 + 15.9333}{3} = \frac{43.1097}{3} \approx \mathbf{14.3699\text{ szt./dzień}}$$
+  (dla porównania błąd baseline'u na tych samych 3 datach wynosił $\frac{3.0 + 21.0 + 42.0}{3} = \mathbf{22.0000\text{ szt./dzień}}$).
+
+### 11.3. Zestawienie wyników Train vs Validation vs Test (na podstawie [reports/metrics.csv](metrics.csv))
 
 Sprawdzono liczności prób ewaluacyjnych:
 - **Zbiór treningowy (`train`):** **248 dni** (ważne cele po odrzuceniu 4 braków z 252 dat kalendarza)
@@ -338,14 +351,14 @@ Sprawdzono liczności prób ewaluacyjnych:
 - **Wzrost błędu modelu bazowego (`Dummy`):** Błąd baseline'u wzrósł z **16.2143 szt./dzień** na walidacji do **17.8452 szt./dzień** na teście, co stanowi wzrost o **+1.6309 szt./dzień** (względny wzrost błędu o **+10.06%**).
 - **Utrzymanie przewagi konkurencyjnej:** Pomimo ogólnego wzrostu poziomu błędu w trudniejszym okresie testowym, wybrane drzewo decyzyjne utrzymało wyraźną i stabilną przewagę nad modelem odniesienia — na teście błąd drzewa był niższy o **3.7522 szt./dzień**, co odpowiada **21.03% względnej redukcji błędu** (na walidacji przewaga wynosiła 4.2640 szt./dzień, czyli 26.30%).
 
-### 11.3. Ograniczenia interpretacji i hipoteza analityczna
+### 11.4. Ograniczenia interpretacji i hipoteza analityczna
 1. **Syntetyczny charakter danych:** Wszystkie badane zbiory pochodzą ze środowiska syntetycznego. Rzeczywiste zjawiska rynkowe, elastyczność popytowa oraz zachowania konsumentów w fizycznym sklepie e-commerce mogą charakteryzować się większym szumem losowym, nietypowymi anomaliami logistycznymi oraz bardziej złożoną dynamiką.
 2. **Pojedynczy horyzont testowy:** Zbiór testowy obejmuje ściśle jedno, 84-dniowe okno zimowe (od 2 grudnia 2024 r. do 23 lutego 2025 r.). Wyniki te nie stanowią gwarancji identycznej skuteczności w innych kwartałach (np. w okresie wiosenno-letnim) ani w innych latach operacyjnych.
 3. **🔬 Hipoteza analityczna dotycząca przyczyny wyższego błędu na teście:**  
    Jako **hipotezę analityczną** przyjmuje się, że wyższy błąd predykcji obu modeli na teście wynika ze specyfiki okresu zimowego (szczyt zakupowy w IV kwartale przed świętami oraz wyprzedaże noworoczne w styczniu), w którym średni dobowy popyt wzrósł do $90.44\text{ szt./dzień}$ (z wieloma dniami przekraczającymi 120–134 zamówienia). Prosty model drzewa o głębokości 3 nie posiada informacji o upływie miesięcy ani o trendzie długoterminowym, operując wyłącznie na regułach wyznaczonych z danych z okresu styczeń–wrzesień 2024 r.  
    *Zastrzeżenie metodologiczne: powyższe przypuszczenie stanowi hipotezę badawczą, a nie empirycznie udowodniony fakt.*
 
-### 11.4. Artefakty wynikowe
+### 11.5. Artefakty wynikowe
 - [reports/test_predictions.csv](test_predictions.csv) – szczegółowe dzienne prognozy dla wszystkich 84 dni testowych.
 - [reports/metrics.csv](metrics.csv) – kompletne zestawienie metryk w cyklu życia modeli.
 
