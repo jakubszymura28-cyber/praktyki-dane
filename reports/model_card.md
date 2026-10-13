@@ -135,7 +135,16 @@ Uczenie przygotowania cech przeprowadzono ściśle na 248 wierszach treningowych
 | **Niezależne obliczenie agenta (pandas)** | **575.275 PLN** | 244 niepuste budżety z 248 wierszy treningu | Identyczne |
 | **Różnica bezwzględna** | **0.000 PLN** | Różnica numeryczna | **100% Zgodności** |
 
-Wynik kontroli potwierdza, że potok cech w [src/train.py](src/train.py) uczy się dokładnie na właściwym podzbiorze obserwacji, nie powoduje wycieku danych i poprawnie uzupełnia braki planowanego budżetu reklamowego.
+### 8.4. Zapis specyfikacji wybranego rozwiązania z Dnia 11 (Zamrożenie)
+W ramach wdrożenia potoku przygotowania cech i modeli ustalono ostateczną specyfikację produkcyjną:
+- **Wybrany model:** `DecisionTreeRegressor` połączony z preprocesorem cech w jeden obiekt `Pipeline(ColumnTransformer + DecisionTreeRegressor)`
+- **Parametry hiperprzestrzeni:** `max_depth=3, random_state=42`
+- **Trzy dopuszczone cechy wejściowe ($X$):** `day_of_week`, `promo`, `planned_ad_spend_pln`
+- **Uzyskane wyniki MAE:**
+  - Zbiór treningowy (248 dni): **11.1093 szt./dzień**
+  - Zbiór walidacyjny (84 dni): **11.9503 szt./dzień** (względna redukcja błędu o **26.30%** / $4.2640\text{ szt.}$ względem Baseline **16.2143 szt./dzień**)
+- **Data zamrożenia modeli:** `2026-10-06`
+- **Identyfikator commitu zamrożenia:** `3f59de1`
 
 ---
 
@@ -275,7 +284,15 @@ Ostatecznie wybrane modele zostały seryjnie utrwalone w formacie binarnym w kat
   - Nie uwzględnia nietypowych anomalii makroekonomicznych ani nagłych awarii serwisu.
   - Zbiór testowy pozostaje nienaruszony do momentu ostatecznego odbioru projektu.
 
-### 10.7. Plan ewaluacji na zbiorze testowym (Plan na Dzień 17)
+### 10.7. Wynik audytu wycieku danych (Data Leakage) przed otwarciem testu
+- **Oficjalny wynik kontroli:** **„gotowe do testu”** (brak jakichkolwiek problemów blokujących, 100% zgodności rygoru analitycznego).
+- **Potwierdzenie kryteriów audytowych:**
+  1. *Brak cech z przyszłości:* Zmienne `visits` i `revenue_pln` są całkowicie wykluczone i programistycznie blokowane w potoku (`validate_feature_list` w `src/train.py`), eliminując wyciek danych w czasie $t+1$.
+  2. *Izolacja przygotowania cech:* `SimpleImputer` i `OneHotEncoder` uczyły się parametrów wyłącznie na 248 wierszach zbioru treningowego (wyznaczona mediana budżetu: dokładnie `575.275 PLN`). Walidacja była poddawana wyłącznie transformacji (`.transform()`).
+  3. *Izolacja modeli:* Zarówno `DummyRegressor`, jak i `DecisionTreeRegressor` dopasowano (`.fit()`) wyłącznie na 248 wierszach `train`. Zbiór walidacyjny służył wyłącznie do predykcji (`.predict()`), a 84 dni testu pozostały ściśle nietknięte.
+  4. *Determinizm po deserializacji:* Wczytane obiekty z `models/baseline.joblib` i `models/selected_pipeline.joblib` generują w 100% identyczne prognozy walidacyjne (`assert np.allclose`).
+
+### 10.8. Plan ewaluacji na zbiorze testowym (Plan na Dzień 17)
 1. **Zbiór ewaluacyjny:** 84 dni ze zbioru testowego ([data/processed/orders_test.csv](../data/processed/orders_test.csv)).
 2. **Ścisły rygor metodologiczny (No Retraining):**
    - Ewaluacja zostanie przeprowadzona bezpośrednio na zamrożonych artefaktach binarnych (`models/selected_pipeline.joblib` oraz `models/baseline.joblib`).
