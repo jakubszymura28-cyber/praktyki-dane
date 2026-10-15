@@ -1,345 +1,286 @@
-# Praktyki - Analiza Danych
+# Praktyki - Analiza Danych i Modelowanie ML
 
-## Cel praktyk
-Celem praktyk jest opanowanie analizy danych z wykorzystaniem biblioteki pandas, środowiska Python oraz kontroli wersji Git. Ponadto celem jest opanowanie narzędzi analitycznych, automatyzacja pracy z danymi oraz efektywna współpraca z asystentami AI w środowisku IDE.
-
----
-
-## 📊 Wprowadzenie do danych (`orders_intro.csv`)
-
-Zbiór w [data/raw/orders_intro.csv](data/raw/orders_intro.csv) zawiera dzienne liczby zamówień z 6 dni: `8, 10, 10, 12, 15, 65`.
-
-### Tabela podsumowująca:
-
-| Metryka | Wartość | Sposób obliczenia |
-| :--- | :---: | :--- |
-| **Liczba dni** | 6 | Zliczenie wierszy z obserwacjami |
-| **Suma zamówień** | 120 | 8 + 10 + 10 + 12 + 15 + 65 |
-| **Średnia arytmetyczna** | 20.0 | 120 / 6 |
-| **Mediana** | 11.0 | Uporządkowane: 8, 10, **10**, **12**, 15, 65 → (10 + 12) / 2 |
-
-> **Wniosek analityczny:** Wartość 65 to element odstający (outlier). Średnia (20) jest na niego wrażliwa i uległa zawyżeniu, podczas gdy mediana (11) wierniej opisuje typowy dzień sprzedaży.
+## 📌 Cel i zakres projektu
+Celem projektu zrealizowanego w ramach praktyk jest stworzenie powtarzalnego, bezpiecznego i w pełni deterministycznego potoku analizy danych sprzedażowych sklepu internetowego oraz budowy modelu uczenia maszynowego prognozującego popyt na dzień jutrzejszy ($t+1$). Projekt kładzie szczególny nacisk na:
+- Inżynierię jakości danych i zasadę *Fail-Fast* w module czyszczącym,
+- Ochronę przed wyciekiem danych (*Data Leakage*) w procesie modelowania,
+- Zamrożenie potoków produkcyjnych oraz niezależną ewaluację na zbiorze testowym,
+- Interaktywne wdrożenie modelu w aplikacji demonstracyjnej Streamlit,
+- Rzetelną współpracę i krytyczny audyt generatywnych asystentów AI (Prompt Hygiene).
 
 ---
 
 ## 📁 Struktura repozytorium
 
-Zgodnie z przyjętymi standardami projektu ([AGENTS.md](AGENTS.md)), struktura katalogów prezentuje się następująco:
-
 ```text
 praktyki dane/
 ├── data/
-│   ├── raw/            # Oryginalne, niemutowalne zbiory danych wejściowych (read-only)
-│   └── processed/      # Wyczyszczone i przetworzone zbiory przygotowane do analizy
-├── notebooks/          # Notatniki Jupyter (EDA, wizualizacje, prototypowanie)
-├── src/                # Kod źródłowy wielokrotnego użytku, potoki danych, moduły pomocnicze
-├── outputs/            # Wyniki prac: wygenerowane wykresy, modele, raporty
-├── requirements.txt    # Lista bibliotek i zależności w projekcie
-├── .gitignore          # Ignorowane pliki (środowiska wirtualne, dane wrażliwe/duże pliki, cache)
-├── AGENTS.md           # Instrukcje i wytyczne dla asystentów AI pracujących w repozytorium
-└── README.md           # Główna dokumentacja projektu
+│   ├── raw/                  # Niemutowalne dane źródłowe (tylko do odczytu: CSV, kalendarz)
+│   └── processed/            # Oczyszczone zbiory danych: orders_train.csv, orders_validation.csv, orders_test.csv, orders.sqlite
+├── notebooks/                # Notatniki Jupyter (01_start.ipynb, 02_analysis.ipynb)
+├── src/                      # Kod źródłowy wielokrotnego użytku:
+│   ├── prepare_data.py       # Centralny potok czyszczenia i dołączania kalendarza (Single Source of Truth)
+│   ├── query_data.py         # Załadunek bazy SQLite i agregacje analityczne
+│   ├── train.py              # Potok cech (ColumnTransformer), trening i zamrożenie modeli
+│   └── predict.py            # Niezależne wnioskowanie testowe (.predict) i funkcja predykcji pojedynczego dnia
+├── tests/                    # Zautomatyzowane testy jednostkowe:
+│   ├── test_prepare_data.py  # 6 prób walidacji danych (ujemne/ułamkowe orders, budżet, data)
+│   └── test_training.py      # 3 próby ochrony przed Data Leakage i determinizmu potoku cech
+├── models/                   # Zamrożone obiekty produkcyjne (.joblib):
+│   ├── baseline.joblib       # Model odniesienia DummyRegressor (stała mediana 85.0 szt.)
+│   └── selected_pipeline.joblib # Produkcyjny Pipeline (ColumnTransformer + DecisionTreeRegressor d=3)
+├── reports/                  # Raporty analityczne, metryki CSV, audyty i wykresy PNG
+├── sql/                      # Zapytania analityczne SQL (queries.sql)
+├── app.py                    # Aplikacja demonstracyjna Streamlit do prognozowania popytu na jutro
+├── requirements.txt          # Zależności i wersje bibliotek
+├── AGENTS.md                 # Wytyczne i zasady współpracy z asystentami AI
+├── .gitignore                # Wykluczenia z kontroli wersji Git (.venv, cache, pliki tymczasowe)
+└── README.md                 # Główna dokumentacja projektu i instrukcja odtworzenia
 ```
 
 ---
 
-## 🛠️ Środowisko i wymagania
+## 📊 Kluczowe wyniki analityczne i raporty
 
-- **Język:** Python 3.10+
-- **Środowisko wirtualne:** `.venv`
-- **Główne biblioteki:**
-  - `pandas` – manipulacja i analiza danych tabelarycznych
-  - `numpy` – obliczenia numeryczne i macierzowe
-  - `matplotlib`, `seaborn` – wizualizacja danych
-  - `scikit-learn` – modelowanie statystyczne i uczenie maszynowe
-  - `jupyter` – interaktywne środowisko notatników
+Wszystkie ustalenia analityczne i wyniki modelowania zostały udokumentowane w dedykowanych raportach w katalogu `reports/`:
 
----
+| Raport / Dokument | Ścieżka pliku | Kluczowe wnioski i zawartość |
+|---|---|---|
+| **Raport jakości danych** | [reports/quality.md](reports/quality.md) | Tabela *Przed vs Po*, reguły czyszczenia, rachunek różnicy -3 orders, audyt połączenia z kalendarzem. |
+| **Raport analityczny (EDA)** | [reports/analysis.md](reports/analysis.md) | Szereg czasowy, analiza dni tygodnia (szczyt w soboty: 105.19 szt.), wpływ promocji (+30.2%), zapytania SQL. |
+| **Karta Modelu (Model Card)** | [reports/model_card.md](reports/model_card.md) | Specyfikacja zadania $t+1$, dobór metryki MAE, architektura `ColumnTransformer`, analiza błędów. |
+| **Audyt odtwarzalności potoku** | [reports/reproduction.md](reports/reproduction.md) | Weryfikacja tożsamości numerycznej modeli (różnica MAE = 0.0000), kontrola ciągłości kalendarza. |
+| **Specyfikacja i testy aplikacji Demo** | [reports/demo_tests.md](reports/demo_tests.md) | 6 prób formularza Streamlit, obsługa braków budżetu, ostrzeżenia o ekstrapolacji powyżej 1500 PLN. |
+| **Audyt współpracy z asystentem AI** | [reports/ai_evaluation.md](reports/ai_evaluation.md) | Ewaluacja 6 prób AI, odporność na *Indirect Prompt Injection*, studium błędu Próby 4 i 5 zasad AI. |
+| **Tabela kompletności przekazania** | [reports/handover.md](reports/handover.md) | Pełna macierz gotowości komponentów repozytorium do publikacji. |
+| **Szkic prezentacji końcowej** | [reports/presentation.md](reports/presentation.md) | 10 slajdów podsumowujących biznesowy, techniczny i etyczny wymiar praktyk. |
 
-## 🚀 Pierwsze kroki (Instalacja i konfiguracja)
-
-1. **Utworzenie środowiska wirtualnego:**
-   ```bash
-   python -m venv .venv
-   ```
-
-2. **Aktywacja środowiska:**
-   - **Windows (PowerShell):**
-     ```powershell
-     .\.venv\Scripts\Activate.ps1
-     ```
-   - **Windows (CMD):**
-     ```cmd
-     .\.venv\Scripts\activate.bat
-     ```
-   - **Linux / macOS:**
-     ```bash
-     source .venv/bin/activate
-     ```
-
-3. **Instalacja zależności:**
-   ```bash
-   pip install --upgrade pip
-   pip install -r requirements.txt
-   ```
+### Kluczowe wykresy analityczne:
+- [reports/orders_by_date.png](reports/orders_by_date.png) – Szereg czasowy dziennej sprzedaży z zaznaczeniem okresów promocji.
+- [reports/orders_by_weekday.png](reports/orders_by_weekday.png) – Średnia sprzedaż według dni tygodnia (oś Y od zera).
+- [reports/orders_histogram.png](reports/orders_histogram.png) – Rozkład empiryczny liczby zamówień z medianą i średnią.
+- [reports/orders_by_weekday_truncated_demo.png](reports/orders_by_weekday_truncated_demo.png) – Poglądowy wykres z uciętą osią ilustrujący ryzyko manipulacji percepcją.
 
 ---
 
-## 📋 Zasady pracy z danymi i kodem
+## 🛠️ Środowisko i wymagania wstępne
 
-1. **Integralność danych:**
-   - Dane w katalogu `data/raw/` są **tylko do odczytu**. Żadne transformacje nie mogą nadpisywać surowych plików źródłowych.
-   - Wszelkie przetworzone, oczyszczone zbiory należy zapisywać w `data/processed/`.
-2. **Bezpieczeństwo danych:**
-   - Nie umieszczaj w repozytorium kluczy API, haseł ani danych wrażliwych (PII).
-3. **Powtarzalność wyników (Reproducibility):**
-   - Wszystkie losowe operacje, podziały danych i trenowanie modeli muszą posiadać ustalony seed: `random_state=42` / `seed=42`.
-4. **Jakość kodu:**
-   - Kod w `src/` powinien spełniać standardy PEP 8 i posiadać adnotacje typów (type hinting).
-   - Kod prototypowy i eksploracyjny umieszczamy w `notebooks/`, natomiast funkcje wielokrotnego użytku refaktoryzujemy do modułów w `src/`.
-Projekt analityczny - wprowadzenie.
-## Instrukcja uruchomienia projektu
+Instrukcja została przygotowana i zweryfikowana pod kątem systemu **Windows 10 / Windows 11** oraz konsoli **PowerShell**:
+- **System operacyjny:** Microsoft Windows 10 / 11 (64-bit),
+- **Powłoka:** Windows PowerShell 5.1+ lub PowerShell 7+,
+- **Interpreter języka:** Python 3.13 / Python 3.14+ (zainstalowany w systemie i dodany do zmiennej PATH),
+- **System kontroli wersji:** Git 2.40+,
+- **Środowisko IDE:** Antigravity IDE (lub VS Code).
 
-### 1. Otwarcie projektu w Antigravity
-1. Uruchom program **Antigravity**.
-2. Wybierz z menu: **File** -> **Open Folder...** (Otwórz folder).
-3. Wskaż główny katalog projektu (`praktyki dane`).
+> **Ważna zasada:** Wszystkie poniższe polecenia Pythona używają bezpośredniej ścieżki do pliku wykonywalnego w środowisku wirtualnym: `.\.venv\Scripts\python.exe`. Dzięki temu nie ma konieczności wcześniejszego uruchamiania skryptu aktywacji powłoki (`Activate.ps1`).
 
-### 2. Dane wejściowe
-Plik źródłowy z danymi wykorzystywanymi do analizy znajduje się pod ścieżką:
-* `data/raw/orders_intro.csv`
+---
 
-### 3. Wybór środowiska wirtualnego (.venv) i uruchomienie notebooka
-1. W drzewie plików po lewej stronie przejdź do katalogu `notebooks/` i otwórz plik `notebooks/01_start.ipynb`.
-2. W prawym górnym rogu okna notebooka kliknij przycisk **Select Kernel**.
-3. Wybierz pozycję **Python Environments...**, a następnie wskaż środowisko `.venv` znajdujące się w katalogu projektu (`.venv/Scripts/python.exe`).
-4. Kliknij na górnym pasku notebooka opcję **Restart Kernel**, a następnie **Run All** (lub uruchamiaj komórki po kolei od góry).
-5. Wszystkie komórki wykonają się poprawnie, prezentując podsumowanie statystyczne (6 dni, suma 120, średnia 20, mediana 11), wykres liniowy oraz tabelę analizy obserwacji odstającej.
+## 🚀 Instrukcja uruchomienia krok po kroku (Windows 10 / PowerShell)
 
-### 4. Przygotowanie i czyszczenie zbiorów danych (Pipeline: Trening i Walidacja)
-Do powtarzalnego, deterministycznego wyczyszczenia zbioru treningowego i walidacyjnego służy skrypt [src/prepare_data.py](src/prepare_data.py).
+Wszystkie polecenia należy uruchamiać w oknie terminala **PowerShell** otwartym w **głównym folderze projektu** (`praktyki dane`):
 
-1. **Uruchomienie w terminalu Antigravity z głównego katalogu projektu:**
-   ```powershell
-   .\.venv\Scripts\python src/prepare_data.py
-   ```
-   *(lub po uprzedniej aktywacji wirtualnego środowiska: `python src/prepare_data.py`)*
+### Krok 1: Otwarcie projektu w Antigravity IDE
+1. Uruchom program **Antigravity IDE**.
+2. Wybierz z menu górnego: **File** $\rightarrow$ **Open Folder...** (lub skrót `Ctrl + K, Ctrl + O`).
+3. Wskaż folder główny repozytorium: `praktyki dane`.
 
-2. **Działanie skryptu:**
-   * Wczytuje zbiory surowe [data/raw/orders_train_raw.csv](data/raw/orders_train_raw.csv) oraz [data/raw/orders_validation.csv](data/raw/orders_validation.csv) (tryb read-only, bez modyfikacji oryginałów).
-   * Usuwa powtórzone wiersze (trening: redukcja z 255 do 252 wierszy; walidacja: 84 wiersze bez duplikatów).
-   * Standaryzuje kolumnę `promo` (zamienia tekst `' yes '` na `1`, rzutuje na typ `int64`).
-   * Waliduje format dat (ISO `YYYY-MM-DD`), weryfikuje brak duplikatów i sortuje chronologicznie.
-   * Obsługuje wartości ujemne `orders`: zamienia je na brak (`NaN`) i dodaje kolumnę flagi `orders_invalid` (`1` dla wartości ujemnych, `0` dla poprawnych).
-   * Zachowuje braki bez imputacji (w walidacji cel `orders` pozostaje nienaruszony, mediana budżetu nie jest liczona).
-   * Dołącza cechę `day_of_week` (0-6) z [data/raw/calendar.csv](data/raw/calendar.csv) bez dołączania `is_weekend`.
-   * Przeprowadza automatyczne kontrole integralności (unikalność klucza kalendarza, brak fan-out, stałość sum `orders`, brak wspólnych dat, sekwencyjność czasowa).
-   * Zapisuje oczyszczone zbiory do [data/processed/orders_train.csv](data/processed/orders_train.csv) oraz [data/processed/orders_validation.csv](data/processed/orders_validation.csv).
-
-### 5. Uruchomienie testów jednostkowych (Próby sprawdzające)
-Do automatycznej weryfikacji poprawności reguł czyszczenia na izolowanych próbkach danych służy skrypt [tests/test_prepare_data.py](tests/test_prepare_data.py).
-
-1. **Polecenie uruchomienia testów w terminalu z głównego folderu:**
-   ```powershell
-   .\.venv\Scripts\python tests/test_prepare_data.py
-   ```
-   *(lub po uprzedniej aktywacji wirtualnego środowiska: `python tests/test_prepare_data.py`)*
-
-2. **Zasada podziału na błędy przerywające vs flagi jakości:**
-   * **Błędy przerywające program (`ValueError`):** Nieliczbowe teksty w kolumnach liczbowych (`planned_ad_spend_pln`, `orders`) oraz uszkodzona data świadczą o naruszeniu schematu i zepsuciu typu danych (zasada *Fail Fast*). Ujemny budżet reklamowy narusza z kolei twardą regułę biznesową nieujemności kosztów. W tych przypadkach potok natychmiast zatrzymuje się z czytelnym błędem.
-   * **Flagi jakości danych (`orders_invalid = 1` i zamiana na `NaN`):** Liczba zamówień (`orders`) to zmienna dyskretna celu. Wartości ujemne oraz ułamkowe (np. 12.5) to usterki pojedynczej obserwacji celu. Zamiast unieważniać cały zbiór danych, anomalia jest flagowana (`orders_invalid = 1`) i zamieniana na `NaN`, co bezpiecznie wyklucza rekord z procesu modelowania.
-
-3. **Zakres sprawdzanych prób (6/6):**
-   * **Próba 1 (Ujemne `orders`):** Weryfikuje, czy ujemna wartość zamówień (`-5.0`) zostaje zamieniona na brak danych (`NaN`), a w kolumnie `orders_invalid` ustawiona zostaje flaga `1`.
-   * **Próba 2 (Niepoprawna data):** Weryfikuje, czy uszkodzony format daty (`niepoprawna-data-999`) zgłasza czytelny błąd `ValueError` informujący o nieoczekiwanym formacie danych.
-   * **Próba 3 (Ujemny budżet):** Weryfikuje, czy ujemna wartość budżetu (`-150.0`) przerywa wykonanie czytelnym wyjątkiem `ValueError` z informacją o ujemnej kwocie budżetu.
-   * **Próba 4 (Tekstowy budżet):** Weryfikuje, czy nieliczbowy ciąg tekstowy (`'tysiac'`) w kolumnie budżetu przerywa wykonanie czytelnym wyjątkiem `ValueError`.
-   * **Próba 5 (Ułamkowe `orders`):** Weryfikuje, czy niedozwolona ułamkowa liczba zamówień (`12.5`) zostaje zamieniona na `NaN` i oznaczona flagą `orders_invalid = 1`.
-   * **Próba 6 (Tekstowe `orders`):** Weryfikuje, czy nieliczbowy ciąg tekstowy (`'dziesiec'`) w kolumnie celu przerywa wykonanie czytelnym wyjątkiem `ValueError`.
-   * **Bezpieczeństwo danych:** Testy operują na katalogu tymczasowym (`tempfile`) i nie modyfikują oryginalnego pliku `data/raw/orders_train_raw.csv`.
-
-### 6. Baza danych SQLite i zapytania analityczne (SQL)
-Do załadowania oczyszczonych danych do lokalnej bazy SQLite oraz wykonania zapytań analitycznych służy skrypt [src/query_data.py](src/query_data.py).
-
-1. **Polecenie uruchomienia w terminalu z głównego folderu:**
-   ```powershell
-   .\.venv\Scripts\python src/query_data.py
-   ```
-   *(lub po uprzedniej aktywacji wirtualnego środowiska: `python src/query_data.py`)*
-
-2. **Działanie skryptu:**
-   * Wczytuje dane z pliku [data/processed/orders_train.csv](data/processed/orders_train.csv) do tabeli `orders_train` w lokalnej bazie [data/processed/orders.sqlite](data/processed/orders.sqlite).
-   * Weryfikuje typy kolumn: `orders` jako liczba rzeczywista (`REAL`), a wartości brakujące jako natywny SQL `NULL` (nie tekst `'NULL'`).
-   * Demonstruje zachowanie funkcji agregujących `COUNT(*)` vs `COUNT(kolumna)` vs `AVG(kolumna)` na zestawie `8, 10, NULL`.
-   * Wykonuje zapytania analityczne zdefiniowane w pliku [sql/queries.sql](sql/queries.sql):
-     - 10 pierwszych dat w kolejności chronologicznej,
-     - Dni z aktywną promocją (`promo = 1`),
-     - 5 dni z największą liczbą zamówień (`orders`),
-     - Porównanie `COUNT(*)` i `COUNT(orders)` (badanie braków).
-
-### 7. Zalecana kolejność uruchomienia potoku danych (Pipeline Workflow)
-
-Aby zagwarantować pełną powtarzalność, spójność liczb i poprawność generowanych raportów, potok danych należy uruchamiać w następującej kolejności:
-
-```text
-[1. src/prepare_data.py]  ──►  [2. src/query_data.py]  ──►  [3. notebooks/02_analysis.ipynb]
-(Czyszczenie danych CSV)      (Baza SQLite i agregacje)       (Wizualizacje i asercje pandas vs SQL)
-```
-
-#### Krok 1: Przygotowanie i czyszczenie danych treningowych
-* **Polecenie:**
+### Krok 2: Utworzenie środowiska wirtualnego (`.venv`)
+* **Katalog roboczy (Cwd):** `c:\Users\Lenovo\Desktop\praktyki dane` (główny folder)
+* **Polecenie w PowerShell:**
   ```powershell
-  python src/prepare_data.py
+  python -m venv .venv
   ```
-* **Dane wejściowe:** [data/raw/orders_train_raw.csv](data/raw/orders_train_raw.csv)
-* **Plik wynikowy:** [data/processed/orders_train.csv](data/processed/orders_train.csv)
-* **Obsługa ścieżek i brakującego pliku CSV:**
-  - Skrypt dynamicznie wspiera uruchamianie zarówno z głównego katalogu repozytorium (`data/raw/...`), jak i z podkatalogów roboczych (np. `../data/raw/...`).
-  - W przypadku braku pliku źródłowego skrypt rzuca jednoznaczny wyjątek `FileNotFoundError: Nie znaleziono pliku źródłowego: <ścieżka>`, uniemożliwiając ciche kontynuowanie z błędnymi danymi.
-  - Przy uszkodzonym lub pustym pliku CSV zgłaszany jest wyjątek `ValueError` z precyzyjnym komunikatem.
+* **Oczekiwany wynik:** Utworzenie katalogu `.venv/` zawierającego izolowane środowisko Pythona (`.venv/Scripts/python.exe`).
 
-#### Krok 2: Załadowanie bazy danych SQLite i zapytania analityczne
-* **Polecenie:**
+### Krok 3: Instalacja wymaganych bibliotek
+* **Katalog roboczy (Cwd):** Główny folder projektu
+* **Polecenie w PowerShell:**
   ```powershell
-  python src/query_data.py
+  .\.venv\Scripts\python.exe -m pip install --upgrade pip
+  .\.venv\Scripts\python.exe -m pip install -r requirements.txt
   ```
-* **Działanie:**
-  - Wczytuje wyczyszczony zbiór do bazy [data/processed/orders.sqlite](data/processed/orders.sqlite).
-  - Wykonuje zapytania analityczne i generuje podsumowania do plików CSV w katalogu `reports/`:
-    - [reports/by_promo.csv](reports/by_promo.csv) – sprzedaż w dniach z promocją i bez,
-    - [reports/by_month.csv](reports/by_month.csv) – dynamika miesięczna,
-    - [reports/by_weekday.csv](reports/by_weekday.csv) – podsumowanie według dni tygodnia.
-  - Wyznacza bazowe wartości kontrolne SQL: **248 ważnych dni** i **sumę 20 933.0 zamówień**.
+* **Oczekiwany wynik:** Komunikat pomyślnej instalacji pakietów (`Successfully installed pandas numpy scikit-learn matplotlib seaborn streamlit joblib ...`).
 
-#### Krok 3: Analiza eksploracyjna i raportowanie w notebooku
-* **Plik:** [notebooks/02_analysis.ipynb](notebooks/02_analysis.ipynb)
-* **Instrukcja uruchomienia:**
-  1. Otwórz notatnik w Antigravity.
-  2. Kliknij **Restart Kernel**, a następnie **Run All** (uruchomienie wszystkich komórek od góry do dołu).
-* **Zawartość i kontrole:**
-  - Notatnik wywołuje `src/prepare_data.py`, zachowując reguły czyszczenia w jednym skrypcie.
-  - W sekcji kontrolnej wykonuje formalne porównanie pandas vs SQL potwierdzające 100% zgodności (liczba obserwacji: 248, suma zamówień: 20 933.0) za pomocą automatycznych asercji (`assert`).
-  - Prezentuje tabele podsumowujące oraz generuje 3 oficjalne wykresy do katalogu `reports/` ([orders_by_date.png](reports/orders_by_date.png), [orders_by_weekday.png](reports/orders_by_weekday.png), [orders_histogram.png](reports/orders_histogram.png)) wraz z wariantem demonstracyjnym uciętej osi ([orders_by_weekday_truncated_demo.png](reports/orders_by_weekday_truncated_demo.png)).
+### Krok 4: Konfiguracja interpretera i kernela w IDE
+1. W Antigravity IDE naciśnij skrót `Ctrl + Shift + P` i wpisz: `Python: Select Interpreter`.
+2. Wskaż ścieżkę do środowiska projektu: `.\.venv\Scripts\python.exe`.
+3. Przy otwieraniu notatników w prawym górnym rogu upewnij się, że jako **Kernel** wybrano `.venv (Python 3.13/3.14)`.
 
-### 8. Praca z gałęziami Git (Ćwiczenie kontrolne)
-W ramach ćwiczenia kontroli wersji wykonano poprawkę redakcyjną tekstu w raporcie [reports/analysis.md](reports/analysis.md) na dedykowanej gałęzi roboczej `report-review`:
-* **Commit na GitHub:** [`7a20bb9`](https://github.com/jakubszymura28-cyber/praktyki-dane/commit/7a20bb9caea01ed6d588583d7dfc03cadbe43335) (*`docs(report): uproszczenie wyjasnienia korelacji i przyczynowosci`*).
-* **Zakres:** Uproszczenie wyjaśnienia braku przyczynowości w punkcie 2 sekcji ograniczeń analizy.
+---
 
-### 9. Przygotowanie do modelowania i Karta Modelu (Dzień 9)
-Dokumentacja założeń modelowania prognostycznego znajduje się w pliku [reports/model_card.md](reports/model_card.md):
-* **Cel:** Dobowa prognoza popytu dla magazynu ($t+1$).
-* **Zależności:** Biblioteka `scikit-learn` została dodana do [requirements.txt](requirements.txt).
-* **Modele i metryka:** Porównanie `DecisionTreeRegressor` z modelem bazowym `DummyRegressor(strategy='median')` za pomocą metryki MAE na ustalonym zbiorze walidacyjnym (84 dni bez shuffle).
+### Krok 5: Przygotowanie i deterministyczne czyszczenie danych
+* **Moduł:** [`src/prepare_data.py`](src/prepare_data.py) (Single Source of Truth)
+* **Katalog roboczy (Cwd):** Główny folder projektu
+* **Polecenie w PowerShell:**
+  ```powershell
+  .\.venv\Scripts\python.exe src/prepare_data.py
+  ```
+* **Działanie:** Czyta surowe dane z `data/raw/`, usuwa duplikaty, standaryzuje `promo`, waliduje daty, obsługuje ujemne/ułamkowe zamówienia flagą `orders_invalid = 1` i dołącza kalendarz bez fan-out.
+* **Oczekiwany plik wynikowy:**
+  - `data/processed/orders_train.csv` (252 wiersze, 248 poprawnych celów),
+  - `data/processed/orders_validation.csv` (84 wiersze),
+  - `data/processed/orders_test.csv` (84 wiersze).
+* **Oczekiwany komunikat konsoli:**
+  ```text
+  WSZYSTKIE KONTROLE PODZIAŁU CZASOWEGO I TESTU ZAKOŃCZONE PEŁNYM SUKCESEM!
+  ```
 
-### 10. Przetwarzanie zbioru walidacyjnego i cech kalendarza (Dzień 10)
-W ramach rozbudowy potoku danych przygotowano proces walidacyjny oraz złączenie cech czasowych z kalendarza:
-* **Dane wejściowe:** [data/raw/orders_validation.csv](data/raw/orders_validation.csv) (84 wiersze, zakres `2024-09-09` – `2024-12-01`).
-* **Zasady jakości i ochrona przed wyciekiem danych (Data Leakage):**
-  - Zastosowano te same reguły czyszczenia co dla treningu w skrypcie [src/prepare_data.py](src/prepare_data.py).
-  - Wartości docelowe `orders` w walidacji **nie są imputowane**.
-  - Nie jest obliczana mediana budżetu na zbiorze walidacyjnym (brak wycieku informacji do procesu uczenia).
-* **Dołączenie cechy kalendarzowej:**
-  - Dołączono kolumnę `day_of_week` (0 = poniedziałek, ..., 6 = niedziela) z [data/raw/calendar.csv](data/raw/calendar.csv) po kluczu `date`.
-  - Kolumna `is_weekend` **nie** została dodana do cech modelu.
-* **Kontrole integralności i rygor podziału czasowego:**
-  - **Liczności:** Trening: 252 daty (248 poprawnych celów, 4 braki), Walidacja: 84 daty (84 poprawne cele, 0 braków).
-  - **Brak fan-out:** Liczba wierszy i suma `orders` przed i po złączeniu z kalendarzem są identyczne (suma trening: 20 933.0, suma walidacja: 7 492.0).
-  - **Rozłączność czasowa:** $\text{Trening} \cap \text{Walidacja} = \emptyset$ (brak wspólnych dat).
-  - **Sekwencyjność:** Zbiór walidacyjny rozpoczyna się `2024-09-09`, ściśle po końcu treningu (`2024-09-08`).
-* **Pliki wynikowe:** [data/processed/orders_train.csv](data/processed/orders_train.csv) oraz [data/processed/orders_validation.csv](data/processed/orders_validation.csv).
-* **Szczegółowy audyt:** Pełny raport kontroli złączenia i podziału czasowego znajduje się w Sekcji 11 raportu [reports/quality.md](reports/quality.md).
+### Krok 6: Uruchomienie testów jednostkowych jakości danych
+* **Moduł testów:** [`tests/test_prepare_data.py`](tests/test_prepare_data.py)
+* **Katalog roboczy (Cwd):** Główny folder projektu
+* **Polecenie w PowerShell:**
+  ```powershell
+  .\.venv\Scripts\python.exe tests/test_prepare_data.py
+  ```
+* **Zakres prób (6/6):** Ujemne `orders` (flaga NaN), niepoprawna data (ValueError), ujemny budżet (ValueError), tekstowy budżet (ValueError), ułamkowe `orders` (flaga NaN), tekstowe `orders` (ValueError).
+* **Oczekiwany komunikat konsoli:**
+  ```text
+  Ran 6 tests in 0.164s
+  OK
+  ```
 
-### 11. Potok przygotowania cech i treningu (Dzień 11)
-Do powtarzalnego, bezpiecznego przygotowania cech do modelowania służy skrypt [src/train.py](src/train.py).
+### Krok 7: Załadowanie lokalnej bazy SQLite i zapytania agregujące
+* **Moduł:** [`src/query_data.py`](src/query_data.py)
+* **Katalog roboczy (Cwd):** Główny folder projektu
+* **Polecenie w PowerShell:**
+  ```powershell
+  .\.venv\Scripts\python.exe src/query_data.py
+  ```
+* **Działanie:** Tworzy tabelę `orders_train` w bazie `data/processed/orders.sqlite`, weryfikuje typy `REAL` i natywne `NULL` oraz generuje tabele podsumowujące.
+* **Oczekiwane pliki wynikowe:**
+  - `data/processed/orders.sqlite`,
+  - `reports/by_promo.csv`, `reports/by_weekday.csv`, `reports/by_month.csv`.
+* **Oczekiwany komunikat konsoli:**
+  ```text
+  [Sukces] Załadowano 252 wierszy z 'orders_train.csv' do tabeli 'orders_train' w 'orders.sqlite'.
+  [Sukces] Wszystkie zapytania analityczne i raporty CSV wygenerowane pomyślnie.
+  ```
 
-1. **Polecenie uruchomienia w terminalu z głównego folderu:**
-   ```powershell
-   .\.venv\Scripts\python src/train.py
-   ```
-   *(lub po aktywacji środowiska: `python src/train.py`)*
+### Krok 8: Eksploracyjna analiza danych w notatniku (EDA)
+* **Notatnik:** [`notebooks/02_analysis.ipynb`](notebooks/02_analysis.ipynb)
+* **Sposób wykonania:**
+  1. Otwórz plik `notebooks/02_analysis.ipynb` w edytorze Antigravity IDE.
+  2. Upewnij się, że kernel to `.venv`.
+  3. Wybierz opcję **Restart Kernel**, a następnie **Run All**.
+* **Działanie:** Weryfikuje zgodność pandas vs SQL za pomocą asercji `assert`, prezentuje tabele i eksportuje 4 oficjalne wykresy do katalogu `reports/`.
+* **Oczekiwane pliki wynikowe w `reports/`:**
+  - `reports/orders_by_date.png`,
+  - `reports/orders_by_weekday.png`,
+  - `reports/orders_histogram.png`,
+  - `reports/orders_by_weekday_truncated_demo.png`.
 
-2. **Działanie skryptu i ochrona przed wyciekiem danych:**
-   * **Izolacja próby:** Uczenie potoku (`.fit()`) odbywa się **wyłącznie na 248 wierszach treningowych** posiadających poprawną wartość celu `orders` (4 wiersze z brakami są wykluczone).
-   * **Cechy wejściowe ($X$):** wyłącznie `day_of_week`, `promo`, `planned_ad_spend_pln`.
-   * **Kolumny wykluczone:** `visits` i `revenue_pln` **nie są cechami** (zapobieganie wyciekowi danych w czasie $t+1$).
-   * **Struktura potoku `ColumnTransformer`:**
-     - `SimpleImputer(strategy='median')` – **uczy się z treningu** mediany budżetu reklamowego (`575.275 PLN`) do uzupełniania braków.
-     - `OneHotEncoder(handle_unknown='ignore')` – **uczy się z treningu** 7 kategorii dni tygodnia (0–6).
-     - `passthrough` – **stosuje ustaloną regułę** przekazania binarnej flagi `promo` (0/1) bez uczenia wag.
-   * **Kontrola spójności:** Skrypt automatycznie weryfikuje zgodność wyuczonej mediany z niezależnym rachunkiem pandas (`575.275 PLN == 575.275 PLN`, błąd = 0.00).
-   * **Szczegóły audytu:** Pełne zestawienie znajduje się w Sekcji 8 dokumentu [reports/model_card.md](reports/model_card.md).
+---
 
-### 12. Ewaluacja modelu bazowego DummyRegressor (Dzień 12)
-W ramach implementacji modelu odniesienia skrypt [src/train.py](src/train.py) trenuje model `DummyRegressor(strategy='median')`:
-* **Uczenie i stała prognoza:** Uczony wyłącznie na 248 wierszach treningowych z poprawnym celem; wyznacza stałą prognozę równą medianie z treningu: **85.0 szt./dzień**.
-* **Predykcja na walidacji:** Generuje prognozy dla wszystkich 84 dni zbioru walidacyjnego.
-* **Wyniki metryk MAE:**
-  - Zbiór treningowy (248 dni): **17.1815 szt./dzień**
-  - Zbiór walidacyjny (84 dni): **16.2143 szt./dzień**
-* **Wygenerowane raporty:**
-  - [reports/metrics.csv](reports/metrics.csv) – formalne zestawienie MAE dla zbioru treningowego i walidacyjnego.
-  - [reports/validation_predictions.csv](reports/validation_predictions.csv) – dzienne zestawienie dat, poprawnych wartości `orders`, prognoz stałych (`85.0`) oraz błędów bezwzględnych.
-* **Kontrola ręczna (pierwsze 3 dni walidacji):**
-  - `2024-09-09`: rzeczywiste 78.0, prognoza 85.0 $\rightarrow$ błąd bezwzględny = 7.0 szt.
-  - `2024-09-10`: rzeczywiste 68.0, prognoza 85.0 $\rightarrow$ błąd bezwzględny = 17.0 szt.
-  - `2024-09-11`: rzeczywiste 56.0, prognoza 85.0 $\rightarrow$ błąd bezwzględny = 29.0 szt.
-  - Średni błąd 3 pierwszych dni: **17.67 szt.** (zbliżony do ogólnego MAE walidacji: **16.21 szt.**).
+### Krok 9: Trening potoku uczenia maszynowego i zamrożenie modeli
+* **Moduł:** [`src/train.py`](src/train.py)
+* **Katalog roboczy (Cwd):** Główny folder projektu
+* **Polecenie w PowerShell:**
+  ```powershell
+  .\.venv\Scripts\python.exe src/train.py
+  ```
+* **Zasada rygoru:** Uczenie odbywa się przy **ściśle zamrożonej konfiguracji** (`DecisionTreeRegressor(max_depth=3, random_state=42)` z potokiem `ColumnTransformer`). Mediana budżetu (`575.275 PLN`) uczona jest wyłącznie na 248 wierszach treningowych.
+* **Oczekiwane pliki wynikowe:**
+  - `models/baseline.joblib` (zamrożony DummyRegressor),
+  - `models/selected_pipeline.joblib` (zamrożony pełny Pipeline),
+  - `reports/metrics.csv` (zestawienie MAE treningu i walidacji),
+  - `reports/validation_predictions.csv` (prognozy 84 dni walidacji),
+  - `reports/validation_errors.csv` (błędy walidacji).
+* **Oczekiwany komunikat konsoli:**
+  ```text
+  [Sukces] Wszystkie etapy treningu, zapisu modeli i eksportu raportów zakończone powodzeniem!
+  ```
 
-### 13. Ewaluacja modelu kandydującego DecisionTreeRegressor (Dzień 13)
-W potoku [src/train.py](src/train.py) wdrożono i przetestowano model kandydujący `DecisionTreeRegressor(max_depth=3, random_state=42)` zintegrowany z preprocesorem cech (`SimpleImputer`, `OneHotEncoder`, `passthrough`):
-* **Porównanie MAE na oknie walidacyjnym (84 dni):**
-  - Model bazowy (`DummyRegressor`): **16.2143 szt./dzień**
-  - Model kandydujący (`DecisionTreeRegressor`): **11.9503 szt./dzień**
-  - **Poprawa:** Redukcja błędu o **4.2640 szt./dzień** (~26.3% niższy błąd predykcji).
-* **Pomiar czasu działania:**
-  - Czas uczenia potoku (`fit` preprocesora + drzewa): ~**9.66 ms** (0.0097 s).
-  - Czas prognozowania walidacji (`predict` 84 dni): ~**3.79 ms** (0.0038 s).
-* **Zaktualizowane raporty:**
-  - [reports/metrics.csv](reports/metrics.csv) – metryki MAE i zmierzony czas obu modeli na treningu i walidacji.
-  - [reports/validation_predictions.csv](reports/validation_predictions.csv) – równoległe prognozy obu modeli dla wszystkich 84 dni.
-  - [reports/model_card.md](reports/model_card.md) – szczegółowe omówienie wniosków metodologicznych w Sekcji 10.
+### Krok 10: Uruchomienie testów jednostkowych potoku modelowania
+* **Moduł testów:** [`tests/test_training.py`](tests/test_training.py)
+* **Katalog roboczy (Cwd):** Główny folder projektu
+* **Polecenie w PowerShell:**
+  ```powershell
+  .\.venv\Scripts\python.exe -m unittest tests/test_training.py
+  ```
+* **Zakres prób (3/3):** Brak wymaganego pliku (FileNotFoundError), bezwzględna blokada zabronionych cech `orders`, `visits`, `revenue_pln` (ValueError – ochrona przed Data Leakage), spójność transformera cech.
+* **Oczekiwany komunikat konsoli:**
+  ```text
+  Ran 3 tests in 0.05s
+  OK
+  ```
 
-### 14. Testy jednostkowe potoku uczenia i zabezpieczeń (Dzień 14)
-Do weryfikacji odporności potoku uczenia i ochrony przed wyciekiem danych służy zestaw testów [tests/test_training.py](tests/test_training.py):
+### Krok 11: Niezależna ocena modeli na zbiorze testowym
+* **Moduł:** [`src/predict.py`](src/predict.py)
+* **Katalog roboczy (Cwd):** Główny folder projektu
+* **Polecenie w PowerShell:**
+  ```powershell
+  .\.venv\Scripts\python.exe src/predict.py
+  ```
+* **Kluczowa zasada audytowa:** Skrypt wczytuje zamrożone modele z `models/` i wykonuje **wyłącznie wnioskowanie predykcyjne (`.predict()`)**. Moduł pod żadnym pozorem nie zawiera wywołania `.fit()` ani nie przelicza mediany z danych testowych.
+* **Oczekiwane pliki wynikowe:**
+  - `reports/test_predictions.csv` (prognozy dla 84 dni testu od 2024-12-02 do 2025-02-23),
+  - `reports/metrics.csv` (uzupełnione o wiersze ewaluacji testowej: Baseline MAE = 17.8452, Drzewo MAE = 14.0930).
+* **Oczekiwany komunikat konsoli:**
+  ```text
+  [Sukces] Pomyślnie zapisano prognozy testowe do 'reports/test_predictions.csv'.
+  [Sukces] Zaktualizowano raport metryk w 'reports/metrics.csv'.
+  ```
 
-1. **Polecenie uruchomienia testów:**
-   ```powershell
-   .\.venv\Scripts\python -m unittest tests/test_training.py
-   ```
-2. **Zakres sprawdzanych prób:**
-   * **Próba 1 (Brak wymaganego pliku):** Weryfikuje, czy brak pliku źródłowego rzuca jednoznaczny wyjątek `FileNotFoundError`.
-   * **Próba 2 (Odrzucenie zabronionych cech):** Weryfikuje, czy próba przekazania kolumn `orders`, `visits` lub `revenue_pln` jako cech wejściowych zostaje zablokowana z błędem `ValueError` (ochrona przed Data Leakage w czasie $t+1$).
-   * **Próba 3 (Wspólna implementacja przygotowania cech):** Weryfikuje determinizm przekształcenia cech za pomocą wspólnego obiektu `build_preprocessor()` z modułu `src/train.py`.
-   * **Bezpieczeństwo danych:** Testy operują na katalogach tymczasowych (`tempfile`) i nie modyfikują oryginalnych zbiorów danych.
+### Krok 12: Uruchomienie interaktywnej aplikacji demonstracyjnej (Streamlit)
+* **Plik aplikacji:** [`app.py`](app.py)
+* **Katalog roboczy (Cwd):** Główny folder projektu
+* **Polecenie w PowerShell:**
+  ```powershell
+  .\.venv\Scripts\python.exe -m streamlit run app.py --server.address 127.0.0.1 --server.port 8501
+  ```
+* **Działanie:** Uruchamia lokalny serwer WWW aplikacji demonstracyjnej. Otwórz w przeglądarce adres: **`http://127.0.0.1:8501`**.
+* **Funkcjonalności aplikacji:**
+  - Wybór dnia tygodnia oraz statusu promocji,
+  - Wprowadzenie zaplanowanego budżetu reklamowego (z opcją pozostawienia pustego pola – bezpieczna imputacja medianą treningową 575.28 PLN),
+  - Automatyczne ostrzeżenie o ekstrapolacji przy budżecie > 1500 PLN,
+  - Widoczny panel ograniczeń i założeń modelu pod wygenerowaną prognozą.
+* **Sposób bezpiecznego zatrzymania aplikacji:**
+  - Przejdź do okna terminala PowerShell, w którym działa proces, i naciśnij skrót klawiszowy **`Ctrl + C`**.
 
-### 15. Zamrożenie modeli i dogłębna analiza błędów (Dzień 15-16)
-W ramach finalizacji etapu modelowania utrwalono wybrane modele oraz przeprowadzono analizę błędów:
-* **Zamrożone modele produkcyjne w katalogu `models/`:**
-  - `models/baseline.joblib` – zamrożony model odniesienia `DummyRegressor(strategy='median')`.
-  - `models/selected_pipeline.joblib` – zamrożony potok produkcyjny `Pipeline(ColumnTransformer + DecisionTreeRegressor(max_depth=3, random_state=42))`.
-  - **Weryfikacja po wczytaniu:** Skrypt `src/train.py` automatycznie ładuje oba obiekty za pomocą `joblib.load()` i asercją potwierdza 100% numeryczną spójność prognoz.
-* **Analiza błędów:**
-  - [reports/validation_errors.csv](reports/validation_errors.csv) – lista 84 dni posortowana według błędu predykcji drzewa.
-  - Największa redukcja błędu nastąpiła w soboty (spadek błędu MAE z 28.83 do 12.98 szt./dzień).
-  - Względna redukcja błędu MAE wyniosła **26.30%** (spadek z 16.21 do 11.95 szt./dzień na walidacji).
+---
 
-### 16. Aplikacja demonstracyjna Streamlit (Dzień 18)
-W projekcie wdrożono lokalną aplikację demonstracyjną `app.py` służącą do interaktywnego prognozowania dziennej liczby zamówień na dzień jutrzejszy ($t+1$). Aplikacja korzysta z zamrożonego potoku `models/selected_pipeline.joblib` i wspólnej funkcji `src.predict.predict_single_day`.
+## 🛡️ Rozwiązywanie typowych problemów (Troubleshooting)
 
-#### Sprawdzone polecenie startu aplikacji (PowerShell w głównym folderze):
-```powershell
-.\.venv\Scripts\python.exe -m streamlit run app.py --server.address 127.0.0.1 --server.port 8501
-```
-Po uruchomieniu otwórz w przeglądarce adres: **http://127.0.0.1:8501**.  
-*(Jeśli port 8501 jest zajęty, zastąp `8501` przez `8502` i otwórz adres http://127.0.0.1:8502).*
+### Problem 1: Błędny interpreter Pythona (`ModuleNotFoundError`)
+* **Objaw:** Komunikat błędu typu: `ModuleNotFoundError: No module named 'pandas'` lub `No module named 'sklearn'`.
+* **Przyczyna:** Uruchomienie polecenia przy użyciu domyślnego, globalnego Pythona systemowego zamiast środowiska wirtualnego projektu.
+* **Rozwiązanie:** Zawsze podawaj pełną ścieżkę względną do interpretera w środowisku wirtualnym:
+  ```powershell
+  .\.venv\Scripts\python.exe <ścieżka_do_skryptu.py>
+  ```
+  W Antigravity IDE upewnij się, że wybrany interpreter w pasku stanu to `Python (.venv)`.
 
-#### Sposób zatrzymania aplikacji:
-- Aby bezpiecznie zatrzymać działającą aplikację, przejdź do okna terminala, w którym została uruchomiona, i naciśnij skrót klawiszowy **`Ctrl + C`**. Nie zatrzymuj przypadkowych procesów systemowych.
+### Problem 2: Brak pliku źródłowego (`FileNotFoundError`)
+* **Objaw:** Komunikat błędu: `FileNotFoundError: Nie znaleziono pliku źródłowego: data\raw\orders_train_raw.csv`.
+* **Przyczyna:** Brak wymaganych plików w katalogu `data/raw/` lub uszkodzenie struktury folderów po klonowaniu.
+* **Rozwiązanie:** Sprawdź poleceniem `Get-ChildItem data/raw` czy w katalogu znajdują się 4 wymagane pliki wejściowe: `orders_train_raw.csv`, `orders_validation.csv`, `orders_test.csv`, `calendar.csv`. Pliki te są niemutowalne i stanowią podstawę odtworzenia potoku.
 
+### Problem 3: Niewłaściwy katalog roboczy (`Current Working Directory`)
+* **Objaw:** Błędy importu modułów (np. `ModuleNotFoundError: No module named 'src'`) lub błędy względnych ścieżek zapisu raportów.
+* **Przyczyna:** Terminal PowerShell został otwarty wewnątrz podkatalogu (np. `praktyki dane\src` lub `praktyki dane\notebooks`) zamiast w katalogu głównym projektu.
+* **Rozwiązanie:** Upewnij się, że znak zachęty terminala wskazuje główny katalog repozytorium. W PowerShell sprawdź i skoryguj bieżącą lokalizację:
+  ```powershell
+  Get-Location
+  # Jeśli jesteś w podfolderze, przejdź do katalogu nadrzędnego:
+  Set-Location "c:\Users\Lenovo\Desktop\praktyki dane"
+  ```
 
+---
 
+## 📋 Status weryfikacji i plan odbioru
 
-
-
-
-
+Zgodnie z wymogami audytowymi projektu:
+- **Kroki zweryfikowane lokalnie:**
+  - [x] Odtworzenie potoku czyszczenia danych (`src/prepare_data.py`) – 100% zgodne liczności.
+  - [x] Zestaw testów jednostkowych walidacji (`tests/test_prepare_data.py`) – 6/6 testów OK.
+  - [x] Zapytania bazy SQLite i agregacje (`src/query_data.py`) – 248 dni, suma 20 933.0 szt.
+  - [x] Pełne wykonanie notatnika eksploracyjnego (`notebooks/02_analysis.ipynb`) i wygenerowanie wykresów w `reports/`.
+  - [x] Trening i zamrożenie modeli produkcyjnych (`src/train.py`, `models/*.joblib`).
+  - [x] Testy jednostkowe ochrony przed wyciekiem danych (`tests/test_training.py`) – 3/3 testy OK.
+  - [x] Ewaluacja na zbiorze testowym bez wywołania fit (`src/predict.py`) – MAE = 14.0930.
+  - [x] Testy funkcjonalne aplikacji demonstracyjnej Streamlit (`app.py`).
+  - [x] Opracowanie raportów `reports/handover.md` oraz `reports/presentation.md`.
+- **Kroki do sprawdzenia jutro / po publikacji:**
+  - [ ] Weryfikacja działania odnośników względnych w publicznym interfejsie GitHub.
+  - [ ] Klonowanie repozytorium z publicznego adresu URL na czystą maszynę wirtualną Windows 10 i test odtworzenia instrukcji krok po kroku.
