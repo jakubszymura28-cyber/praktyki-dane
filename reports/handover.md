@@ -147,5 +147,91 @@ W ramach ostatecznego przeglądu przed przekazaniem projektu do oceny przez opie
    - Projekt spełnia wszystkie warunki obowiązkowe (brak wycieku danych, brak uczenia na teście, brak danych wrażliwych/PII, brak zewnętrznych modeli nieznanego pochodzenia).
    - Repozytorium zostało zatwierdzone, zsynchronizowane z gałęzią `main` na GitHubie i jest w pełni gotowe do finalnej oceny przez opiekuna praktyk.
 
+---
+
+## 5. Porównanie umiejętności przed i po praktykach
+
+Poniższe zestawienie odnosi się bezpośrednio do **dwóch celów sformułowanych w Dniu 1 praktyk** i dokumentuje postęp kompetencyjny potwierdzony konkretnymi plikami i rozwiązaniami w repozytorium.
+
+### Cel 1: Filtrowanie dużych zbiorów danych
+* **Stan przed praktykami:**
+  - Znajomość podstawowych operacji filtrowania w arkuszach kalkulacyjnych (Excel) lub prostych zapytań `df[df['col'] > 0]` w Pythonie.
+  - Brak procedur walidacji schematu – filtrowanie traktowane jako manualne "usuwanie wierszy", z ryzykiem cichego usuwania istotnych danych lub ignorowania błędów typów.
+  - Brak automatycznych testów sprawdzających, czy filtr nie przepuszcza anomalii lub wartości skrajnych.
+* **Stan po praktykach (co potrafię teraz):**
+  - Projektowanie defensywnych reguł walidacyjnych opartych o zasadę **Fail-Fast**: natychmiastowe zatrzymywanie potoku wyjątkiem `ValueError`, gdy dane naruszają założenia krytyczne (np. ujemny budżet reklamowy, błędny format daty, teksty w kolumnach numerycznych).
+  - Prawidłowe rozróżnienie i obsługa anomalii popytu: zamiast bezpowrotnego usuwania wierszy, implementacja flagi jakościowej `orders_invalid = 1` i zamiana wartości na `NaN`, co zabezpiecza model przed zniekształceniem przy zachowaniu pełnego rejestru audytowego.
+  - Deduplikacja danych czasowych (odrzucenie powielonych wpisów z tego samego dnia).
+  - Pokrycie reguł walidacyjnych zautomatyzowanymi testami jednostkowymi `pytest` (6/6 testów zdanych).
+* **Pliki w repozytorium dokumentujące umiejętność:**
+  - [`src/prepare_data.py`](../src/prepare_data.py) – defensywny potok czyszczenia, walidacji typów i flagowania błędów.
+  - [`tests/test_prepare_data.py`](../tests/test_prepare_data.py) – zestaw testów jednostkowych dla przypadków brzegowych (ujemny/ułamkowy popyt, błędne daty, formaty tekstowe).
+  - [`reports/quality.md`](quality.md) – formalny raport jakości z bilansem wierszy przed i po czyszczeniu (252 $\rightarrow$ 248 wierszy).
+
+### Cel 2: Wyciąganie wniosków z porównania dwóch zbiorów danych
+* **Stan przed praktykami:**
+  - Porównywanie zbiorów ograniczone do manualnego zestawiania wykresów lub prostych złączeń bez weryfikacji liczby wierszy.
+  - Podatność na błędy mnożenia rekordów (efekt fan-out) przy operacjach `JOIN`.
+  - Tendencja do mylenia korelacji ze związkiem przyczynowo-skutkowym oraz brak dyscypliny w podziale danych (ryzyko wycieku wiedzy ze zbioru testowego).
+* **Stan po praktykach (co potrafię teraz):**
+  - Realizacja bezpiecznych relacyjnych złączeń tabel (`LEFT JOIN` zamówień z kalendarzem) w SQL oraz pandas z asercją unikalności klucza złączenia i kontrolą niezmienności liczby wierszy (`len(merged) == len(orders)`).
+  - Prowadzenie wielowymiarowej analizy podgrup (efekt promocji $+36\%$, specyfika dni tygodnia ze szczególnym uwzględnieniem sobót, fluktuacje miesięczne).
+  - Rzetelne rozróżnianie korelacji od przyczynowości w raportach analitycznych (np. kampania marketingowa vs kalendarzowe piki weekendowe).
+  - Metodyczny podział danych na rozłączne zbiory czasowe (trening: 248 dni, walidacja: 84 dni, test: 84 dni) z całkowitym zablokowaniem wycieku danych (uczenie preprocesorów wyłącznie na treningu, brak `.fit()` na walidacji i teście).
+* **Pliki w repozytorium dokumentujące umiejętność:**
+  - [`sql/queries.sql`](../sql/queries.sql) oraz [`src/query_data.py`](../src/query_data.py) – złączenia SQL, agregacje i weryfikacja tożsamości sum z pandas (20 933.0 szt.).
+  - [`reports/analysis.md`](analysis.md) – formalny raport z analizy porównawczej promocji, dni tygodnia i sezonowości.
+  - [`reports/reproduction.md`](reproduction.md) – audyt odtwarzalności i porównanie wyników na zbiorach treningowym, walidacyjnym i testowym.
+
+---
+
+## 6. Kompendium kluczowych pojęć projektu własnymi słowami
+
+Poniższe definicje stanowią autorskie podsumowanie 6 fundamentalnych pojęć inżynierii danych i uczenia maszynowego zastosowanych w projekcie:
+
+1. **Zero a brak danych (0 vs NULL / NaN):**
+   - **Zero (`0`)** to konkretna, zarejestrowana i poprawna wartość liczbowa oznaczająca brak wystąpienia zjawiska (np. w danym dniu sklep był otwarty, ale sprzedano dokładnie 0 sztuk, albo na reklamę wydano dokładnie 0 PLN).
+   - **Brak (`NULL` / `NaN`)** oznacza niewiedzę – brak pomiaru, awarię systemu zliczania lub brak informacji o danym dniu.
+   - *Dlaczego to kluczowe:* Zastąpienie braku zerem sztucznie zaniża średnie i zaburza wagę obserwacji w modelu regresji. W projekcie brak wartości skutkuje flagowaniem rekordu (`orders_invalid = 1`) lub świadomą imputacją medianą wyuczoną na zbiorze treningowym (dla budżetu reklamowego), a nie bezrefleksyjnym wstawianiem zera.
+
+2. **Duplikaty przy JOIN (efekt fan-out):**
+   - Zjawisko niekontrolowanego powielenia liczby wierszy w tabeli wynikowej w wyniku operacji `JOIN`, gdy klucz złączenia w dołączanej tabeli nie jest unikalny (relacja jeden-do-wielu zamiast jeden-do-jednego).
+   - *Skutek:* Jeżeli kalendarz zawierałby 2 wpisy dla tej samej daty, zamówienia z tego dnia zostałyby zliczone podwójnie, co zafałszowałoby obrót i metryki.
+   - *Zabezpieczenie w projekcie:* Weryfikacja unikalności daty przed złączeniem oraz asercja sprawdzająca, czy liczba wierszy po `LEFT JOIN` jest dokładnie równa liczbie wierszy tabeli bazowej (`len(orders)`).
+
+3. **Średnia ważona:**
+   - Średnia arytmetyczna, w której poszczególnym składowym przypisuje się wagi proporcjonalne do ich wielkości lub liczebności podgrupy, z której pochodzą.
+   - *Zastosowanie:* Pozwala uniknąć błędu agregacji (paradoksu Simpsona) przy łączeniu średnich z grup o różnej liczbie dni. W projekcie średnia dzienna ze wszystkich dni jest tożsama ze średnią ważoną średnich promocyjnych i niepromocyjnych ważonych liczbą dni trwania danej grupy.
+
+4. **MAE (Mean Absolute Error – Średni Błąd Bezwzględny):**
+   - Metryka oceny jakości modelu regresji, obliczana jako średnia arytmetyczna bezwzględnych wartości różnic między rzeczywistą wartością a prognozą: $\text{MAE} = \frac{1}{n} \sum |y_i - \hat{y}_i|$.
+   - *Zalety w projekcie:* Wynik wyrażony jest w naturalnej jednostce biznesowej (sztuki zamówień na dzień), co ułatwia interpretację przez kierownika magazynu. W odróżnieniu od RMSE nie podnosi błędów do kwadratu, dzięki czemu pojedyncze anomalie czy piki sprzedażowe nie dominują oceny całego modelu.
+
+5. **Wyciek danych (Data Leakage):**
+   - Krytyczny błąd metodologiczny polegający na nieświadomym wprowadzeniu do procesu uczenia modelu informacji, które w warunkach rzeczywistego wdrożenia produkcyjnego nie będą jeszcze znane w chwili generowania prognozy ($t+1$).
+   - *Przykłady z projektu:* Zmienne operacyjne `visits` (liczba wizyt) oraz `revenue_pln` (przychód) są znane dopiero na koniec dnia, po zamknięciu sprzedaży – ich użycie w prognozie na jutro stanowiłoby wyciek danych. Podobnie wyliczenie statystyk do imputacji (np. mediany budżetu) na całym zbiorze zamiast wyłącznie na treningu stanowiłoby wyciek informacji z przyszłości. Projekt skutecznie blokuje oba te kanały.
+
+6. **Walidacja a test:**
+   - **Zbiór walidacyjny:** Służy zespołowi analitycznemu podczas prac badawczych do strojenia hiperparametrów, porównywania architektur (np. model bazowy vs drzewo decyzyjne) i doboru cech. Na walidacji model może być wielokrotnie testowany i iterowany.
+   - **Zbiór testowy:** Stanowi "zamkniętą kapsułę" służącą wyłącznie do jednorazowego, obiektywnego audytu końcowego modelu przed decyzją o wdrożeniu. Na zbiorze testowym bezwzględnie nie wykonuje się dopasowywania wag (`.fit()`), optymalizacji progów ani żadnych modyfikacji architektury – służy on wyłącznie do operacji `.predict()` i symulacji działania w środowisku produkcyjnym.
+
+---
+
+## 7. Odpowiedź na pytanie dnia: Co sprawdziło pobranie projektu przez `git clone`?
+
+Pobranie repozytorium poleceniem `git clone` do całkowicie odrębnego katalogu `praktyki-dane-odbior` i przeprowadzenie czystej procedury odtworzeniowej według instrukcji [`README.md`](../README.md) zweryfikowało 4 kluczowe aspekty dojrzałości inżynierskiej projektu:
+
+1. **Samowystarczalność repozytorium zdalnego (Brak "U mnie działa"):**
+   - Sprawdzono, czy repozytorium na GitHubie zawiera wszystkie niezbędne pliki źródłowe, surowe dane syntetyczne, kody potoków i zamrożone modele.
+   - Wykluczono istnienie jakichkolwiek ukrytych, lokalnych zależności ze stacji deweloperskiej autora (np. bezwzględnych ścieżek `C:\Users\Lenovo\...`, nieopublikowanych skryptów czy ręcznie modyfikowanych plików).
+2. **Skuteczność i poprawność reguł wykluczeń ([`.gitignore`](../.gitignore)):**
+   - Potwierdzono, że w zdalnym repozytorium nie znalazły się zbędne, lokalne artefakty: folder `.venv/`, cache Pythona (`__pycache__`), punkty przywracania Jupyter (`.ipynb_checkpoints/`) ani pliki środowiskowe (`.env`).
+   - Repozytorium jest czyste, lekkie i bezpieczne pod kątem poufności.
+3. **Niezależną odtwarzalność środowiska wykonawczego ([`requirements.txt`](../requirements.txt)):**
+   - Zweryfikowano, że w nowo utworzonym środowisku wirtualnym na czystym systemie polecenie `pip install -r requirements.txt` instaluje spójny zestaw bibliotek, który bezbłędnie przechodzi test zgodności `pip check` (*No broken requirements found*).
+4. **Determinizm instrukcji uruchomieniowej i tożsamość numeryczną:**
+   - Zweryfikowano, że zewnętrzny użytkownik, wykonując sekwencję komend z `README.md`, odtwarza bazę danych, przechodzi 9/9 testów jednostkowych i generuje prognozy o **identycznych metrykach numerycznych** (różnica MAE na zbiorze treningowym, walidacyjnym i testowym wyniosła dokładnie **0.0000 szt./dzień**).
+
+
 
 

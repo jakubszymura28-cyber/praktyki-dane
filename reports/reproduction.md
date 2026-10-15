@@ -196,19 +196,32 @@ W ramach procedury samodzielnej kontroli jakości i weryfikacji metryk projektu 
    - **Plik źródłowy:** [`reports/metrics.csv`](metrics.csv) (wiersz: `DecisionTreeRegressor`, `split: validation`, `mae: 11.9503`).
    - **Względny zysk:** Redukcja błędu o **26.30%** (-4.2640 szt./dzień) względem modelu bazowego (16.2143 szt./dzień).
 
-### 10.2. Ręczny rachunek kontrolny MAE na małej próbce
-Wzór na średni błąd bezwzględny:
+### 10.2. Ręczny rachunek kontrolny MAE na 3 wierszach ze zbioru testowego
+
+Wzór definicyjny na średni błąd bezwzględny:
 $$\text{MAE} = \frac{1}{n} \sum_{i=1}^{n} |y_i - \hat{y}_i|$$
 
-Dla próbki 3 kolejnych obserwacji rzeczywistych ($y$) i predykcji modelu ($\hat{y}$) ze zbioru walidacyjnego:
-- Obserwacja 1: $y_1 = 80$, $\hat{y}_1 = 75 \implies |80 - 75| = 5$
-- Obserwacja 2: $y_2 = 110$, $\hat{y}_2 = 122 \implies |110 - 122| = 12$
-- Obserwacja 3: $y_3 = 95$, $\hat{y}_3 = 91 \implies |95 - 91| = 4$
+Do obliczeń wybrano **3 pierwsze wiersze z oficjalnego pliku predykcji testowych** [`reports/test_predictions.csv`](test_predictions.csv) (z przekazanego commitu):
 
-Rachunek krok po kroku:
-$$\sum_{i=1}^{3} |y_i - \hat{y}_i| = 5 + 12 + 4 = 21$$
-$$\text{MAE} = \frac{21}{3} = \mathbf{7.00\text{ szt.}}$$
+| Nr wiersza w CSV | Data | Rzeczywiste zamówienia ($y_i$) | Prognoza drzewa ($\hat{y}_i$) | Błąd bezwzględny drzewa ($|y_i - \hat{y}_i|$) | Prognoza baseline | Błąd bezwzględny baseline |
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **Wiersz 2** | `2024-12-02` | **88.0** | 83.4118 | $|88.0 - 83.4118| = \mathbf{4.5882}$ | 85.0 | $|88.0 - 85.0| = \mathbf{3.0000}$ |
+| **Wiersz 3** | `2024-12-03` | **106.0** | 83.4118 | $|106.0 - 83.4118| = \mathbf{22.5882}$ | 85.0 | $|106.0 - 85.0| = \mathbf{21.0000}$ |
+| **Wiersz 4** | `2024-12-04` | **127.0** | 111.0667 | $|127.0 - 111.0667| = \mathbf{15.9333}$ | 85.0 | $|127.0 - 85.0| = \mathbf{42.0000}$ |
 
-*Wniosek:* Ręczny rachunek potwierdza intuicyjną interpretację MAE – średni błąd wynosi dokładnie 7 sztuk, a brak potęgowania odchyleń chroni metrykę przed nadmierną wrażliwością na pojedyncze outliery.
+#### Rachunek krok po kroku dla wybranego modelu (DecisionTreeRegressor):
+1. **Suma błędów bezwzględnych dla 3 wierszy:**
+   $$\sum_{i=1}^{3} |y_i - \hat{y}_{i,\text{tree}}| = 4.5882 + 22.5882 + 15.9333 = 43.1097\text{ szt.}$$
+2. **Średni błąd bezwzględny (MAE próbki):**
+   $$\text{MAE}_{\text{tree}} = \frac{43.1097}{3} = \mathbf{14.3699\text{ szt./dzień}}$$
+
+#### Rachunek porównawczy dla modelu bazowego (DummyRegressor):
+1. **Suma błędów bezwzględnych baseline:**
+   $$\sum_{i=1}^{3} |y_i - \hat{y}_{i,\text{base}}| = 3.0000 + 21.0000 + 42.0000 = 66.0000\text{ szt.}$$
+2. **MAE baseline próbki:**
+   $$\text{MAE}_{\text{base}} = \frac{66.0000}{3} = \mathbf{22.0000\text{ szt./dzień}}$$
+
+*Weryfikacja:* Wartości błędów cząstkowych są w 100% tożsame z kolumnami `tree_abs_error` oraz `baseline_abs_error` w pliku [`reports/test_predictions.csv`](test_predictions.csv). Rachunek potwierdza przewagę modelu drzewa decyzyjnego (błąd niższy o 7.63 szt./dzień na tej 3-dniowej próbie).
+
 
 
