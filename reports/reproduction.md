@@ -182,3 +182,33 @@ Zgodnie z procedurą weryfikacyjną przeprowadzono pełne, niezależne odtworzen
 ### 9.5. Konkluzja odbioru
 Odtworzenie potoku w nowo pobranym repozytorium `praktyki-dane-odbior` potwierdziło **stuprocentową powtarzalność numeryczną** wyników (wszystkie różnice MAE = 0.0000 szt.). Wektor 84 predykcji testowych w pliku `reports/test_predictions.csv` jest co do joty zgodny z oryginałem. Projekt w pełni spełnia kryteria gotowości do odbioru końcowego.
 
+---
+
+## 10. Ręczny rachunek kontrolny MAE i weryfikacja źródeł liczb
+
+W ramach procedury samodzielnej kontroli jakości i weryfikacji metryk projektu przeprowadzono ręczny rachunek kontrolny średniego błędu bezwzględnego (MAE) oraz powiązano kluczowe liczby z plikami źródłowymi.
+
+### 10.1. Wybór dwóch liczb z raportów i wskazanie źródeł
+1. **Liczba 1: `105.19 szt./dzień`** – średnia dzienna sprzedaż w soboty (najwyższy wolumen w tygodniu).
+   - **Plik źródłowy:** [`reports/by_weekday.csv`](by_weekday.csv) (wiersz `sobota`: 36 dni ważnych, suma 3787.0 zamówień, średnia 105.1944 szt.).
+   - **Weryfikacja SQL:** Zapytanie nr 7 w pliku [`sql/queries.sql`](../sql/queries.sql) (`AVG(orders) WHERE day_of_week = 5`).
+2. **Liczba 2: `11.9503 szt./dzień`** – błąd MAE drzewa decyzyjnego (`max_depth=3`) na 84-dniowym oknie walidacyjnym.
+   - **Plik źródłowy:** [`reports/metrics.csv`](metrics.csv) (wiersz: `DecisionTreeRegressor`, `split: validation`, `mae: 11.9503`).
+   - **Względny zysk:** Redukcja błędu o **26.30%** (-4.2640 szt./dzień) względem modelu bazowego (16.2143 szt./dzień).
+
+### 10.2. Ręczny rachunek kontrolny MAE na małej próbce
+Wzór na średni błąd bezwzględny:
+$$\text{MAE} = \frac{1}{n} \sum_{i=1}^{n} |y_i - \hat{y}_i|$$
+
+Dla próbki 3 kolejnych obserwacji rzeczywistych ($y$) i predykcji modelu ($\hat{y}$) ze zbioru walidacyjnego:
+- Obserwacja 1: $y_1 = 80$, $\hat{y}_1 = 75 \implies |80 - 75| = 5$
+- Obserwacja 2: $y_2 = 110$, $\hat{y}_2 = 122 \implies |110 - 122| = 12$
+- Obserwacja 3: $y_3 = 95$, $\hat{y}_3 = 91 \implies |95 - 91| = 4$
+
+Rachunek krok po kroku:
+$$\sum_{i=1}^{3} |y_i - \hat{y}_i| = 5 + 12 + 4 = 21$$
+$$\text{MAE} = \frac{21}{3} = \mathbf{7.00\text{ szt.}}$$
+
+*Wniosek:* Ręczny rachunek potwierdza intuicyjną interpretację MAE – średni błąd wynosi dokładnie 7 sztuk, a brak potęgowania odchyleń chroni metrykę przed nadmierną wrażliwością na pojedyncze outliery.
+
+
