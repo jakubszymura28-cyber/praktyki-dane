@@ -144,9 +144,17 @@ Do automatycznej weryfikacji poprawności reguł czyszczenia na izolowanych pró
    ```
    *(lub po uprzedniej aktywacji wirtualnego środowiska: `python tests/test_prepare_data.py`)*
 
-2. **Zakres sprawdzanych prób:**
+2. **Zasada podziału na błędy przerywające vs flagi jakości:**
+   * **Błędy przerywające program (`ValueError`):** Nieliczbowe teksty w kolumnach liczbowych (`planned_ad_spend_pln`, `orders`) oraz uszkodzona data świadczą o naruszeniu schematu i zepsuciu typu danych (zasada *Fail Fast*). Ujemny budżet reklamowy narusza z kolei twardą regułę biznesową nieujemności kosztów. W tych przypadkach potok natychmiast zatrzymuje się z czytelnym błędem.
+   * **Flagi jakości danych (`orders_invalid = 1` i zamiana na `NaN`):** Liczba zamówień (`orders`) to zmienna dyskretna celu. Wartości ujemne oraz ułamkowe (np. 12.5) to usterki pojedynczej obserwacji celu. Zamiast unieważniać cały zbiór danych, anomalia jest flagowana (`orders_invalid = 1`) i zamieniana na `NaN`, co bezpiecznie wyklucza rekord z procesu modelowania.
+
+3. **Zakres sprawdzanych prób (6/6):**
    * **Próba 1 (Ujemne `orders`):** Weryfikuje, czy ujemna wartość zamówień (`-5.0`) zostaje zamieniona na brak danych (`NaN`), a w kolumnie `orders_invalid` ustawiona zostaje flaga `1`.
-   * **Próba 2 (Niepoprawna data):** Weryfikuje, czy uszkodzony format daty zgłasza czytelny błąd `ValueError` informujący o nieoczekiwanym formacie danych (zamiast zwracać pusty wynik).
+   * **Próba 2 (Niepoprawna data):** Weryfikuje, czy uszkodzony format daty (`niepoprawna-data-999`) zgłasza czytelny błąd `ValueError` informujący o nieoczekiwanym formacie danych.
+   * **Próba 3 (Ujemny budżet):** Weryfikuje, czy ujemna wartość budżetu (`-150.0`) przerywa wykonanie czytelnym wyjątkiem `ValueError` z informacją o ujemnej kwocie budżetu.
+   * **Próba 4 (Tekstowy budżet):** Weryfikuje, czy nieliczbowy ciąg tekstowy (`'tysiac'`) w kolumnie budżetu przerywa wykonanie czytelnym wyjątkiem `ValueError`.
+   * **Próba 5 (Ułamkowe `orders`):** Weryfikuje, czy niedozwolona ułamkowa liczba zamówień (`12.5`) zostaje zamieniona na `NaN` i oznaczona flagą `orders_invalid = 1`.
+   * **Próba 6 (Tekstowe `orders`):** Weryfikuje, czy nieliczbowy ciąg tekstowy (`'dziesiec'`) w kolumnie celu przerywa wykonanie czytelnym wyjątkiem `ValueError`.
    * **Bezpieczeństwo danych:** Testy operują na katalogu tymczasowym (`tempfile`) i nie modyfikują oryginalnego pliku `data/raw/orders_train_raw.csv`.
 
 ### 6. Baza danych SQLite i zapytania analityczne (SQL)

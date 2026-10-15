@@ -97,6 +97,122 @@ class TestPrepareData(unittest.TestCase):
         self.assertIn("Nieoczekiwany format danych", err_msg)
         print(f"\n[SUKCES] Próba 2 (Niepoprawna data): Zgłoszono czytelny błąd ValueError -> '{err_msg}'.")
 
+    def test_negative_budget_raises_clear_error(self):
+        """Próba 3: Ujemny budżet ma spowodować czytelny błąd ValueError.
+
+        Test weryfikuje małą próbkę danych z ujemną wartością planned_ad_spend_pln (-150.0).
+        """
+        sample_data = pd.DataFrame({
+            "date": ["2024-01-01", "2024-01-02", "2024-01-03"],
+            "promo": ["0", "1", "0"],
+            "planned_ad_spend_pln": [500.0, -150.0, 700.0],
+            "orders": [80.0, 85.0, 90.0],
+            "visits": [800, 750, 900],
+            "revenue_pln": [8000.0, 7500.0, 9000.0]
+        })
+
+        input_csv = self.temp_dir_path / "test_negative_budget_raw.csv"
+        output_csv = self.temp_dir_path / "test_negative_budget_cleaned.csv"
+        sample_data.to_csv(input_csv, index=False, encoding="utf-8")
+
+        with self.assertRaises(ValueError) as context:
+            prepare_orders_train(input_path=input_csv, output_path=output_csv)
+
+        err_msg = str(context.exception)
+        self.assertIn("Nieoczekiwany format danych", err_msg)
+        self.assertIn("ujemną wartość budżetu", err_msg)
+        print(f"\n[SUKCES] Próba 3 (Ujemny budżet): Zgłoszono czytelny błąd ValueError -> '{err_msg}'.")
+
+    def test_non_numeric_budget_raises_clear_error(self):
+        """Próba 4: Tekstowy budżet ma spowodować czytelny błąd ValueError.
+
+        Test weryfikuje małą próbkę danych z nieliczbowym ciągiem w planned_ad_spend_pln ('tysiac').
+        """
+        sample_data = pd.DataFrame({
+            "date": ["2024-01-01", "2024-01-02", "2024-01-03"],
+            "promo": ["0", "1", "0"],
+            "planned_ad_spend_pln": [500.0, "tysiac", 700.0],
+            "orders": [80.0, 85.0, 90.0],
+            "visits": [800, 750, 900],
+            "revenue_pln": [8000.0, 7500.0, 9000.0]
+        })
+
+        input_csv = self.temp_dir_path / "test_text_budget_raw.csv"
+        output_csv = self.temp_dir_path / "test_text_budget_cleaned.csv"
+        sample_data.to_csv(input_csv, index=False, encoding="utf-8")
+
+        with self.assertRaises(ValueError) as context:
+            prepare_orders_train(input_path=input_csv, output_path=output_csv)
+
+        err_msg = str(context.exception)
+        self.assertIn("Nieoczekiwany format danych", err_msg)
+        self.assertIn("nieliczbowe wartości w kolumnie planned_ad_spend_pln", err_msg)
+        print(f"\n[SUKCES] Próba 4 (Tekstowy budżet): Zgłoszono czytelny błąd ValueError -> '{err_msg}'.")
+
+    def test_fractional_orders_marked_as_nan_with_flag(self):
+        """Próba 5: Ułamkowe orders ma zostać oznaczone jako brak (NaN) z flagą orders_invalid=1.
+
+        Test weryfikuje małą próbkę danych z ułamkową liczbą zamówień (12.5 sztuk).
+        """
+        sample_data = pd.DataFrame({
+            "date": ["2024-01-01", "2024-01-02", "2024-01-03"],
+            "promo": ["0", "1", "0"],
+            "planned_ad_spend_pln": [500.0, 600.0, 700.0],
+            "orders": [80.0, 12.5, 90.0],  # Wiersz 1 zawiera ułamkowe zamówienie 12.5
+            "visits": [800, 750, 900],
+            "revenue_pln": [8000.0, 7500.0, 9000.0]
+        })
+
+        input_csv = self.temp_dir_path / "test_fractional_orders_raw.csv"
+        output_csv = self.temp_dir_path / "test_fractional_orders_cleaned.csv"
+        sample_data.to_csv(input_csv, index=False, encoding="utf-8")
+
+        df_result, stats = prepare_orders_train(input_path=input_csv, output_path=output_csv)
+
+        self.assertTrue(output_csv.exists(), "Plik wynikowy nie został utworzony.")
+        self.assertEqual(len(df_result), 3)
+
+        # Weryfikacja wiersza z poprawną wartością całkowitą
+        row_0 = df_result.iloc[0]
+        self.assertEqual(row_0["orders"], 80.0)
+        self.assertEqual(row_0["orders_invalid"], 0)
+
+        # Weryfikacja wiersza z ułamkiem (12.5 -> NaN, orders_invalid = 1)
+        row_1 = df_result.iloc[1]
+        self.assertTrue(pd.isna(row_1["orders"]), "Ułamkowe orders powinno zostać zamienione na NaN.")
+        self.assertEqual(row_1["orders_invalid"], 1, "Kolumna orders_invalid dla ułamkowego orders musi wynosić 1.")
+
+        # Weryfikacja statystyk
+        self.assertEqual(stats["fractional_orders_modified"], 1)
+        self.assertEqual(stats["orders_invalid_count"], 1)
+        print("\n[SUKCES] Próba 5 (Ułamkowe orders): Wartość ułamkowa 12.5 poprawnie oznaczona jako NaN z flagą orders_invalid=1.")
+
+    def test_non_numeric_orders_raises_clear_error(self):
+        """Próba 6: Tekstowe orders ma spowodować czytelny błąd ValueError.
+
+        Test weryfikuje małą próbkę danych z nieliczbowym ciągiem w orders ('dziesiec').
+        """
+        sample_data = pd.DataFrame({
+            "date": ["2024-01-01", "2024-01-02", "2024-01-03"],
+            "promo": ["0", "1", "0"],
+            "planned_ad_spend_pln": [500.0, 600.0, 700.0],
+            "orders": [80.0, "dziesiec", 90.0],
+            "visits": [800, 750, 900],
+            "revenue_pln": [8000.0, 7500.0, 9000.0]
+        })
+
+        input_csv = self.temp_dir_path / "test_text_orders_raw.csv"
+        output_csv = self.temp_dir_path / "test_text_orders_cleaned.csv"
+        sample_data.to_csv(input_csv, index=False, encoding="utf-8")
+
+        with self.assertRaises(ValueError) as context:
+            prepare_orders_train(input_path=input_csv, output_path=output_csv)
+
+        err_msg = str(context.exception)
+        self.assertIn("Nieoczekiwany format danych", err_msg)
+        self.assertIn("nieliczbowe wartości w kolumnie orders", err_msg)
+        print(f"\n[SUKCES] Próba 6 (Tekstowe orders): Zgłoszono czytelny błąd ValueError -> '{err_msg}'.")
+
 
 if __name__ == "__main__":
     suite = unittest.TestLoader().loadTestsFromTestCase(TestPrepareData)

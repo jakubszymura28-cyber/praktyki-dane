@@ -83,15 +83,63 @@ def clean_orders_df(df_raw: pd.DataFrame, dataset_name: str = "dataset") -> Tupl
 
     df = df.sort_values("date").reset_index(drop=True)
 
-    # 4. Obsługa ujemnego celu (orders < 0) i utworzenie kolumny orders_invalid
-    numeric_orders = pd.to_numeric(df["orders"], errors="coerce")
-    negative_orders_mask = numeric_orders < 0
+    # 4. Walidacja kolumny planned_ad_spend_pln
+    # A. Wykrywanie nieliczbowego tekstu w planned_ad_spend_pln
+    budget_raw = df["planned_ad_spend_pln"]
+    numeric_budget = pd.to_numeric(budget_raw, errors="coerce")
+    budget_non_numeric = (
+        budget_raw.notna()
+        & (budget_raw.astype(str).str.strip() != "")
+        & (budget_raw.astype(str).str.strip().str.lower() != "nan")
+        & numeric_budget.isna()
+    )
+    if budget_non_numeric.any():
+        bad_examples = df.loc[budget_non_numeric, "planned_ad_spend_pln"].unique().tolist()
+        raise ValueError(
+            f"Nieoczekiwany format danych: wykryto nieliczbowe wartości w kolumnie planned_ad_spend_pln: {bad_examples}"
+        )
+
+    # B. Wykrywanie ujemnego budżetu (przerywa program czytelnym błędem ValueError)
+    negative_budget = numeric_budget < 0
+    if negative_budget.any():
+        bad_examples = numeric_budget[negative_budget].unique().tolist()
+        raise ValueError(
+            f"Nieoczekiwany format danych: wykryto ujemną wartość budżetu w kolumnie planned_ad_spend_pln: {bad_examples}"
+        )
+
+    df["planned_ad_spend_pln"] = numeric_budget
+
+    # 5. Walidacja i obsługa kolumny orders
+    # A. Wykrywanie nieliczbowego tekstu w orders (przerywa program czytelnym błędem ValueError)
+    orders_raw = df["orders"]
+    numeric_orders = pd.to_numeric(orders_raw, errors="coerce")
+    orders_non_numeric = (
+        orders_raw.notna()
+        & (orders_raw.astype(str).str.strip() != "")
+        & (orders_raw.astype(str).str.strip().str.lower() != "nan")
+        & numeric_orders.isna()
+    )
+    if orders_non_numeric.any():
+        bad_examples = df.loc[orders_non_numeric, "orders"].unique().tolist()
+        raise ValueError(
+            f"Nieoczekiwany format danych: wykryto nieliczbowe wartości w kolumnie orders: {bad_examples}"
+        )
+
+    # B. Obsługa anomalii w wartościach liczbowych orders:
+    # Wartości ujemne (orders < 0) oraz ułamkowe (orders % 1 != 0) oznaczane są flagą orders_invalid=1 i zamieniane na NaN
+    valid_orders_mask = numeric_orders.notna()
+    negative_orders_mask = valid_orders_mask & (numeric_orders < 0)
+    fractional_orders_mask = valid_orders_mask & (numeric_orders % 1 != 0)
+
+    invalid_orders_mask = negative_orders_mask | fractional_orders_mask
     negative_orders_count = int(negative_orders_mask.sum())
+    fractional_orders_count = int(fractional_orders_mask.sum())
 
-    df["orders_invalid"] = negative_orders_mask.astype(int)
-    df.loc[negative_orders_mask, "orders"] = np.nan
+    df["orders"] = numeric_orders
+    df["orders_invalid"] = invalid_orders_mask.astype(int)
+    df.loc[invalid_orders_mask, "orders"] = np.nan
 
-    # 5. Sprawdzenie braków bez imputacji (braków celu nie uzupełniamy, budżetu nie imputujemy na walidacji)
+    # 6. Sprawdzenie braków bez imputacji (braków celu nie uzupełniamy, budżetu nie imputujemy na walidacji)
     missing_budget = int(df["planned_ad_spend_pln"].isna().sum())
     missing_orders = int(df["orders"].isna().sum())
 
@@ -102,6 +150,7 @@ def clean_orders_df(df_raw: pd.DataFrame, dataset_name: str = "dataset") -> Tupl
         "duplicates_removed": duplicates_removed,
         "promo_modified": text_promo_count,
         "negative_orders_modified": negative_orders_count,
+        "fractional_orders_modified": fractional_orders_count,
         "missing_budget": missing_budget,
         "missing_orders": missing_orders,
         "orders_invalid_count": int(df["orders_invalid"].sum())
