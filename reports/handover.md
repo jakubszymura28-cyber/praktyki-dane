@@ -109,3 +109,25 @@ Na podstawie szczegółowego przeglądu procedury odtworzeniowej przeprowadzonej
 - **Kompletność kontroli i testów:** Zestaw 9/9 zautomatyzowanych testów jednostkowych (6 prób jakości danych w `tests/test_prepare_data.py` oraz 3 próby modelowania w `tests/test_training.py`) przechodzi w 100% ze statusem OK.
 - **Potwierdzenie tożsamości wyników z czystej kopii:** Weryfikacja na nowo utworzonym środowisku potwierdziła tożsamość metryk MAE (różnica = 0.0000 dla treningu, walidacji i testu) oraz stuprocentową zgodność generowanych wektorów predykcji. Brak jakichkolwiek przeszkód uniemożliwiających odbiór techniczny.
 
+---
+
+### 4.2. Wynik kontrolowanej poprawki w kopii odbiorczej
+
+Zgodnie z procedurą weryfikacji przeprowadzono drobną, kontrolowaną zmianę w kodzie formularza, najpierw w kopii `praktyki-dane-odbior`, a po sprawdzeniu przeniesiono ją do projektu głównego:
+
+- **Zmieniony plik:** [`app.py`](../app.py) (wiersz 91)
+- **Przyczyna zmiany:** Zwiększenie czytelności interfejsu dla kierownika magazynu – podanie wyuczonej mediany budżetu (575.28 PLN) bezpośrednio w etykiecie pola numerycznego, jeszcze przed rozwinięciem pomocy.
+- **Treść przed zmianą:**
+  ```python
+  budget_input = st.number_input("Planowany budżet reklamowy w PLN (`planned_ad_spend_pln`):", ...)
+  ```
+- **Treść po zmianie:**
+  ```python
+  budget_input = st.number_input("Planowany budżet reklamowy w PLN (domyślnie mediana 575.28 PLN):", ...)
+  ```
+- **Sposób kontroli i wynik:**
+  - Inspekcja różnicy poleceniem `git diff app.py` (zmiana dokładnie 1 linii tekstu etykiety).
+  - Test kompilacji i importu w środowisku wirtualnym: `.\.venv\Scripts\python.exe -c "import app; print('app imports OK')"` $\rightarrow$ **`app imports OK`** (kod 0).
+- **Integralność modelowania:** Zmiana nie wpłynęła na cechy, wagi modelu, hiperparametry ani dane testowe.
+
+

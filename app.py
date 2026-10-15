@@ -88,7 +88,7 @@ def main():
 
     with col_b1:
         budget_input = st.number_input(
-            "Planowany budżet reklamowy w PLN (`planned_ad_spend_pln`):",
+            "Planowany budżet reklamowy w PLN (domyślnie mediana 575.28 PLN):",
             value=575.28,
             step=50.0,
             format="%.2f",
