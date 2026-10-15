@@ -96,3 +96,16 @@ Na podstawie całościowego przeglądu repozytorium, kodów źródłowych, test�
    - **Wskazany plik:** [`notebooks/`](../notebooks/) (ewentualny `03_demo.ipynb`)
    - **Skutek:** W projekcie zaimplementowano w pełni funkcjonalną aplikację webową Streamlit ([`app.py`](../app.py)). W środowiskach o zaostrzonych regułach sieciowych (blokada portu 8501 lub brak uprawnień do uruchomienia serwera lokalnego) odbiorca może mieć trudność z uruchomieniem interfejsu przeglądarkowego.
    - **Potrzebna poprawka:** Opcjonalne przygotowanie lekkiego notatnika `notebooks/03_demo.ipynb` wykonującego predykcję za pomocą prostego kodu w komórkach dla recenzentów preferujących wyłącznie interfejs Jupyter.
+
+---
+
+### 4.1. Potwierdzenie braku blokad uruchomieniowych i ewaluacyjnych
+
+Na podstawie szczegółowego przeglądu procedury odtworzeniowej przeprowadzonej w czystej kopii `praktyki-dane-odbior` (oraz weryfikacji raportów [`reports/reproduction.md`](reproduction.md) i [`reports/handover.md`](handover.md)) formalnie potwierdza się **całkowity brak problemów blokujących**:
+
+- **Brak błędnych ścieżek:** Wszystkie ścieżki względne do danych surowych (`data/raw/`), oczyszczonych (`data/processed/`), bazy SQLite oraz raportów działają deterministycznie z poziomu głównego katalogu.
+- **Brak brakujących bibliotek:** Plik [`requirements.txt`](../requirements.txt) zawiera pełen zestaw zależności odtwarzalnych w nowym środowisku wirtualnym (`pip check` $\rightarrow$ *No broken requirements found*).
+- **Zgodność instrukcji uruchomieniowej:** Każde z poleceń opisanych w [`README.md`](../README.md) wykonuje się pomyślnie i bezbłędnie.
+- **Kompletność kontroli i testów:** Zestaw 9/9 zautomatyzowanych testów jednostkowych (6 prób jakości danych w `tests/test_prepare_data.py` oraz 3 próby modelowania w `tests/test_training.py`) przechodzi w 100% ze statusem OK.
+- **Potwierdzenie tożsamości wyników z czystej kopii:** Weryfikacja na nowo utworzonym środowisku potwierdziła tożsamość metryk MAE (różnica = 0.0000 dla treningu, walidacji i testu) oraz stuprocentową zgodność generowanych wektorów predykcji. Brak jakichkolwiek przeszkód uniemożliwiających odbiór techniczny.
+
