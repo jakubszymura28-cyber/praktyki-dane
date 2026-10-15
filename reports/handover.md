@@ -130,4 +130,22 @@ Zgodnie z procedurą weryfikacji przeprowadzono drobną, kontrolowaną zmianę w
   - Test kompilacji i importu w środowisku wirtualnym: `.\.venv\Scripts\python.exe -c "import app; print('app imports OK')"` $\rightarrow$ **`app imports OK`** (kod 0).
 - **Integralność modelowania:** Zmiana nie wpłynęła na cechy, wagi modelu, hiperparametry ani dane testowe.
 
+---
+
+### 4.3. Końcowy wynik własnego przeglądu repozytorium i status otwartych punktów
+
+W ramach ostatecznego przeglądu przed przekazaniem projektu do oceny przez opiekuna praktyk:
+
+1. **Kompletność i niezależna odtwarzalność:**
+   - Repozytorium jest w 100% kompletne, zawiera wszystkie surowe i przetworzone dane, zamrożone modele produkcyjne, testy jednostkowe (9/9) oraz pełną dokumentację.
+   - Pomyślnie zrealizowano niezależny test odbiorczy w czystym folderze `praktyki-dane-odbior`, potwierdzając tożsamość numeryczną MAE (różnica = 0.0000 dla treningu, walidacji i testu).
+2. **Podsumowanie pozostałych kwestii technicznych (rekomendacje po etapie praktyk):**
+   - **Kwestia 1 (Model predykcyjny):** Nasycenie drzewa decyzyjnego dla budżetów > 1500 PLN (prognoza 125 sztuk z powodu braku wyższych obserwacji w treningu). Rekomendacja: rozszerzenie danych o kampanie o wyższym budżecie lub wdrożenie modelu regresyjnego opartego na cechach ciągłych.
+   - **Kwestia 2 (Format demonstracyjny):** Brak alternatywnego, statycznego notatnika `03_demo.ipynb` (zastąpionego przez pełną aplikację webową `app.py`). Rekomendacja: opcjonalne przygotowanie lekkiego notatnika demonstracyjnego dla środowisk z blokadą portów sieciowych.
+   - **Kwestia 3 (Weryfikacja publicznych odnośników):** Wszystkie odnośniki względne w `README.md`, `reports/model_card.md` oraz raportach analitycznych działają poprawnie w publicznym interfejsie GitHub bez konieczności logowania.
+3. **Konkluzja gotowości wdrożeniowej:**
+   - Projekt spełnia wszystkie warunki obowiązkowe (brak wycieku danych, brak uczenia na teście, brak danych wrażliwych/PII, brak zewnętrznych modeli nieznanego pochodzenia).
+   - Repozytorium zostało zatwierdzone, zsynchronizowane z gałęzią `main` na GitHubie i jest w pełni gotowe do finalnej oceny przez opiekuna praktyk.
+
+
 
