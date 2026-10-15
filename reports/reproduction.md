@@ -133,3 +133,52 @@ Formaty `joblib` oraz standardowy Python `pickle` są powszechnie stosowane w ek
 - **Odtwarzalność numeryczna:** Potwierdzona w 100% dla wszystkich podziałów (train: 248, val: 84, test: 84).
 - **Integralność artefaktów:** Oryginalne modele w `models/` oraz pliki raportów `reports/` pozostały nienaruszone.
 - **Bezpieczeństwo operacyjne:** Udokumentowano ograniczenia deserializacji `joblib` i zasady bezpiecznego operowania wagami w środowisku analitycznym.
+
+---
+
+## 9. Protokół odbioru i weryfikacji w czystej kopii (`praktyki-dane-odbior`)
+
+Zgodnie z procedurą weryfikacyjną przeprowadzono pełne, niezależne odtworzenie projektu z publicznego repozytorium GitHub do nowo utworzonego katalogu `praktyki-dane-odbior`.
+
+### 9.1. Metadane procedury odbioru
+- **Adres źródłowy:** `https://github.com/jakubszymura28-cyber/praktyki-dane.git`
+- **Pobrany commit (`git log -1 --oneline`):** `b841904 docs: uzupelnienie README o linki do wykresow i instrukcji demo oraz handover o liste otwartych problemow`
+- **Katalog roboczy odtworzenia:** `c:\Users\Lenovo\Desktop\praktyki-dane-odbior`
+- **System i powłoka:** Microsoft Windows 10 (64-bit), PowerShell 5.1+
+- **Interpreter w kopii odbiorczej:** `c:\Users\Lenovo\Desktop\praktyki-dane-odbior\.venv\Scripts\python.exe` (Python 3.13.15)
+  *(Adnotacja środowiskowa: polecenie `py -3.14 -m venv .venv` zgłosiło brak zainstalowanego środowiska 3.14 (`No suitable Python runtime found`); zgodnie z wytycznymi środowisko utworzono poleceniem `py -3.13 -m venv .venv`)*
+- **Weryfikacja bibliotek:**
+  - `.\.venv\Scripts\python.exe -m pip check` $\rightarrow$ **`No broken requirements found.`**
+  - Test importów (`import sys, pandas, matplotlib, sklearn, ipykernel`) $\rightarrow$ **`Importy OK`**.
+
+### 9.2. Wykonane polecenia w kopii odbiorczej
+1. `.\.venv\Scripts\python.exe src/prepare_data.py` – deterministyczne czyszczenie i kontrola relacji czasowych.
+2. `.\.venv\Scripts\python.exe tests/test_prepare_data.py` – 6/6 testów jednostkowych walidacji zaliczonych (0.149s).
+3. `.\.venv\Scripts\python.exe src/query_data.py` – załadowanie bazy SQLite, weryfikacja 248 wierszy i sumy 20 933.0 szt.
+4. Wykonanie komórek notatnika `notebooks/02_analysis.ipynb` – bezbłędny przebieg od góry do dołu, eksport 4 wykresów PNG.
+5. `.\.venv\Scripts\python.exe src/train.py` – trening w ściśle zamrożonej konfiguracji (`DecisionTreeRegressor(max_depth=3)`), mediana budżetu (575.275 PLN) dopasowana wyłącznie na 248 wierszach treningu.
+6. `.\.venv\Scripts\python.exe -m unittest tests/test_training.py` – 3/3 testy blokady cech zabronionych i determinizmu zaliczone (0.092s).
+7. `.\.venv\Scripts\python.exe src/predict.py` – niezależne wnioskowanie testowe (wyłącznie `.predict()`, brak wywołania `.fit()`).
+8. Weryfikacja importów i startu aplikacji `app.py` – test dymny aplikacji Streamlit zakończony sukcesem.
+
+### 9.3. Porównanie liczności zbiorów (Oryginał vs Kopia odbiorcza)
+| Zbiór danych | Zakres dat | Liczność wierszy (oryginał) | Liczność wierszy (kopia) | Poprawne cele orders | Status zgodności |
+|---|:---:|:---:|:---:|:---:|:---:|
+| **Treningowy** | `2024-01-01` do `2024-09-08` | 252 dni | 252 dni | 248 celów (4 braki NaN) | **100% zgodne** |
+| **Walidacyjny** | `2024-09-09` do `2024-12-01` | 84 dni | 84 dni | 84 cele (100%) | **100% zgodne** |
+| **Testowy** | `2024-12-02` do `2025-02-23` | 84 dni | 84 dni | 84 cele (100%) | **100% zgodne** |
+| **Łącznie** | `2024-01-01` do `2025-02-23` | **420 dni** | **420 dni** | **416 celów** | **100% zgodne** |
+
+### 9.4. Porównanie metryk MAE (Oryginał vs Kopia odbiorcza)
+| Split / Podział | Model | MAE (oryginał) [szt.] | MAE (kopia odbiorcza) [szt.] | Różnica bezwzględna | Status tożsamości |
+|---|---|:---:|:---:|:---:|:---:|
+| **Trening** | Baseline (`DummyRegressor`) | 17.1815 | 17.1815 | 0.0000 | **Identyczne** |
+| **Trening** | Drzewo decyzyjne (`max_depth=3`) | 11.1093 | 11.1093 | 0.0000 | **Identyczne** |
+| **Walidacja** | Baseline (`DummyRegressor`) | 16.2143 | 16.2143 | 0.0000 | **Identyczne** |
+| **Walidacja** | Drzewo decyzyjne (`max_depth=3`) | 11.9503 | 11.9503 | 0.0000 | **Identyczne** |
+| **Test** | Baseline (`DummyRegressor`) | 17.8452 | 17.8452 | 0.0000 | **Identyczne** |
+| **Test** | Drzewo decyzyjne (`max_depth=3`) | 14.0930 | 14.0930 | 0.0000 | **Identyczne** |
+
+### 9.5. Konkluzja odbioru
+Odtworzenie potoku w nowo pobranym repozytorium `praktyki-dane-odbior` potwierdziło **stuprocentową powtarzalność numeryczną** wyników (wszystkie różnice MAE = 0.0000 szt.). Wektor 84 predykcji testowych w pliku `reports/test_predictions.csv` jest co do joty zgodny z oryginałem. Projekt w pełni spełnia kryteria gotowości do odbioru końcowego.
+

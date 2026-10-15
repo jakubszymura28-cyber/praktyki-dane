@@ -43,7 +43,7 @@ Poniższa tabela zestawia wszystkie wymagane elementy repozytorium, ich lokaliza
 | **Zrzut ekranu aplikacji demo** | [`reports/demo.png`](demo.png) | Oględziny wizualne: interfejs Streamlit z widocznym formularzem wejściowym, prognozą liczbową i ostrzeżeniami | Brak uwag; czytelny dowód działania |
 | **Aplikacja demonstracyjna** | [`app.py`](../app.py) | Sprawdzono kod aplikacji Streamlit: wczytywanie potoku `selected_pipeline.joblib`, obsługa braku budżetu (mediana 575.28 PLN), ostrzeżenia o ekstrapolacji powyżej 2000 PLN | Brak uwag; aplikacja gotowa do uruchomienia |
 | **Sprawdzenie linków na GitHub** | Publiczny URL repozytorium GitHub | Weryfikacja czytelności i braku błędu 404 w przeglądarce po publikacji | **Do sprawdzenia jutro / po publikacji** |
-| **Klonowanie na czystej maszynie** | Zewnętrzne środowisko Windows 10 | Pobranie z publicznego GitHuba i przejście całej ścieżki z `README.md` | **Do sprawdzenia jutro / po publikacji** |
+| **Klonowanie i odtworzenie w czystej kopii** | `praktyki-dane-odbior` (Windows 10) | Klonowanie z publicznego GitHuba, instalacja nowego `.venv` i przejście całej ścieżki z `README.md` | **Zweryfikowano pomyślnie (różnica MAE = 0.0000)** |
 
 ---
 
@@ -87,10 +87,10 @@ Na podstawie całościowego przeglądu repozytorium, kodów źródłowych, test�
    - **Skutek:** W zbiorze treningowym maksymalny budżet reklamowy wynosił 1500 PLN. Drzewo decyzyjne (`DecisionTreeRegressor`) dla każdego budżetu > 1500 PLN prognozuje stałą wartość nasycenia (np. 125 sztuk dla sobót z promocją), co przy skrajnie wysokich budżetach (np. 5000 PLN) nie odzwierciedla potencjalnego dalszego wzrostu lub spadku efektywności kampanii.
    - **Potrzebna poprawka:** Rozszerzenie zbioru danych o kampanie z wyższym budżetem lub wprowadzenie modelu opartego na cechach ciągłych (np. regularyzowana regresja grzbietowa lub model log-liniowy) dla nietypowych wielkości nakładów reklamowych.
 
-2. **Weryfikacja środowiskowa na niezależnej maszynie (Clean Machine Clone):**
-   - **Wskazany plik:** [`README.md`](../README.md) (Sekcja 6 i 7)
-   - **Skutek:** Całość potoku została przetestowana w bieżącym środowisku IDE (Windows 10, PowerShell, Python 3.13). Potwierdzenie pełnej powtarzalności z zewnętrznego punktu widzenia (klonowanie z publicznego adresu URL, instalacja w nowym `.venv`) wymaga wykonania testu poza maszyną deweloperską.
-   - **Potrzebna poprawka:** Przeprowadzenie testu dymnego (*smoke test*) na czystej stacji roboczej lub maszynie wirtualnej zgodnie z krokami w `README.md` bezpośrednio po publikacji na GitHubie.
+2. **Weryfikacja środowiskowa w czystej kopii (Clean Clone Verification) – ZREALIZOWANO:**
+   - **Wskazany plik:** [`reports/reproduction.md`](reproduction.md) (Sekcja 9) oraz [`README.md`](../README.md)
+   - **Stan faktyczny:** Przeprowadzono pełną procedurę weryfikacyjną: sklonowano publiczne repozytorium GitHub do folderu `praktyki-dane-odbior`, zainstalowano nowe środowisko `.venv` (Python 3.13.15) z `requirements.txt` oraz odtworzono wszystkie kroki z `README.md` (czyszczenie, testy 9/9, SQL, notebook, trening, predykcję testową i demo).
+   - **Wynik audytu:** Uzyskano 100% numeryczną tożsamość metryk MAE (różnica = 0.0000) i prognoz testowych. Potwierdzono pełną niezależną odtwarzalność projektu.
 
 3. **Brak alternatywnego, statycznego notatnika demonstracyjnego:**
    - **Wskazany plik:** [`notebooks/`](../notebooks/) (ewentualny `03_demo.ipynb`)

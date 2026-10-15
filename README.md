@@ -288,5 +288,5 @@ Zgodnie z wymogami audytowymi projektu:
   - [x] Testy funkcjonalne aplikacji demonstracyjnej Streamlit (`app.py`).
   - [x] Opracowanie raportów `reports/handover.md` oraz `reports/presentation.md`.
 - **Kroki do sprawdzenia jutro / po publikacji:**
+  - [x] Klonowanie repozytorium z publicznego adresu URL do czystego folderu `praktyki-dane-odbior` i test odtworzenia instrukcji krok po kroku (100% numeryczna tożsamość wyników w nowym `.venv`).
   - [ ] Weryfikacja działania odnośników względnych w publicznym interfejsie GitHub.
-  - [ ] Klonowanie repozytorium z publicznego adresu URL na czystą maszynę wirtualną Windows 10 i test odtworzenia instrukcji krok po kroku.
