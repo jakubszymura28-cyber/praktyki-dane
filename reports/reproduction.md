@@ -66,7 +66,7 @@ Zgodnie z wymogami projektowymi sprawdzono liczności wierszy we wszystkich zbio
 | **Treningowy** | `data/processed/orders_train.csv` | **248** | 100% poprawnych ($y \ge 0$) | Wyuczenie reguł decyzyjnych i mediany imputacji |
 | **Walidacyjny** | `data/processed/orders_validation.csv` | **84** | 100% obecnych | Strojenie hiperparametrów i zamrożenie modelu |
 | **Testowy** | `data/processed/orders_test.csv` | **84** | 100% obecnych | Końcowa niezależna ewaluacja uogólnienia |
-| **Łącznie** | — | **416** | Pełna ciągłość kalendarza | Horyzont od `2024-01-01` do `2025-02-19` |
+| **Łącznie** | — | **420 dni (416 poprawnych celów)** | Pełna ciągłość kalendarza | Horyzont od `2024-01-01` do `2025-02-23` |
 
 ---
 
