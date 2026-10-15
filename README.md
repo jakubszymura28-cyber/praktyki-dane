@@ -52,14 +52,15 @@ Wszystkie ustalenia analityczne i wyniki modelowania zostały udokumentowane w d
 | **Audyt odtwarzalności potoku** | [reports/reproduction.md](reports/reproduction.md) | Weryfikacja tożsamości numerycznej modeli (różnica MAE = 0.0000), kontrola ciągłości kalendarza. |
 | **Specyfikacja i testy aplikacji Demo** | [reports/demo_tests.md](reports/demo_tests.md) | 6 prób formularza Streamlit, obsługa braków budżetu, ostrzeżenia o ekstrapolacji powyżej 1500 PLN. |
 | **Audyt współpracy z asystentem AI** | [reports/ai_evaluation.md](reports/ai_evaluation.md) | Ewaluacja 6 prób AI, odporność na *Indirect Prompt Injection*, studium błędu Próby 4 i 5 zasad AI. |
-| **Tabela kompletności przekazania** | [reports/handover.md](reports/handover.md) | Pełna macierz gotowości komponentów repozytorium do publikacji. |
-| **Szkic prezentacji końcowej** | [reports/presentation.md](reports/presentation.md) | 10 slajdów podsumowujących biznesowy, techniczny i etyczny wymiar praktyk. |
+| **Tabela kompletności przekazania** | [reports/handover.md](reports/handover.md) | Pełna macierz gotowości komponentów repozytorium do publikacji oraz lista otwartych problemów. |
+| **Szkic prezentacji końcowej** | [reports/presentation.md](reports/presentation.md) | 5 sekcji wystąpienia ustnego (7 minut) podsumowujących biznesowy, techniczny i etyczny wymiar praktyk. |
 
-### Kluczowe wykresy analityczne:
-- [reports/orders_by_date.png](reports/orders_by_date.png) – Szereg czasowy dziennej sprzedaży z zaznaczeniem okresów promocji.
-- [reports/orders_by_weekday.png](reports/orders_by_weekday.png) – Średnia sprzedaż według dni tygodnia (oś Y od zera).
-- [reports/orders_histogram.png](reports/orders_histogram.png) – Rozkład empiryczny liczby zamówień z medianą i średnią.
-- [reports/orders_by_weekday_truncated_demo.png](reports/orders_by_weekday_truncated_demo.png) – Poglądowy wykres z uciętą osią ilustrujący ryzyko manipulacji percepcją.
+### Kluczowe wykresy i wizualizacje:
+- **Szereg czasowy sprzedaży:** [reports/orders_by_date.png](reports/orders_by_date.png) – Dzienny przebieg zamówień z zaznaczeniem okresów promocji.
+- **Wpływ dni tygodnia:** [reports/orders_by_weekday.png](reports/orders_by_weekday.png) – Średnia sprzedaż według dni tygodnia (oś Y od zera, szczyt w soboty: 105.19 szt.).
+- **Rozkład popytu:** [reports/orders_histogram.png](reports/orders_histogram.png) – Rozkład empiryczny liczby zamówień z medianą i średnią.
+- **Wykres poglądowy z uciętą osią:** [reports/orders_by_weekday_truncated_demo.png](reports/orders_by_weekday_truncated_demo.png) – Poglądowy wykres ilustrujący ryzyko manipulacji percepcją różnic.
+- **Zrzut ekranu aplikacji demonstracyjnej:** [reports/demo.png](reports/demo.png) – Podgląd interfejsu aplikacji Streamlit z prognozą na jutro.
 
 ---
 
@@ -235,6 +236,11 @@ Wszystkie polecenia należy uruchamiać w oknie terminala **PowerShell** otwarty
   - Wprowadzenie zaplanowanego budżetu reklamowego (z opcją pozostawienia pustego pola – bezpieczna imputacja medianą treningową 575.28 PLN),
   - Automatyczne ostrzeżenie o ekstrapolacji przy budżecie > 1500 PLN,
   - Widoczny panel ograniczeń i założeń modelu pod wygenerowaną prognozą.
+* **Instrukcja i udokumentowane scenariusze testowe:** Szczegółowe przypadki testowe formularza (dzień standardowy, wysoki budżet z ekstrapolacją, brak budżetu) opisano w raporcie [`reports/demo_tests.md`](reports/demo_tests.md).
+* **Zrzut ekranu działającego interfejsu demonstracyjnego:**
+
+  ![Interfejs demonstracyjny Streamlit](reports/demo.png)
+
 * **Sposób bezpiecznego zatrzymania aplikacji:**
   - Przejdź do okna terminala PowerShell, w którym działa proces, i naciśnij skrót klawiszowy **`Ctrl + C`**.
 

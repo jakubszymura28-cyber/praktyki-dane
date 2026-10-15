@@ -75,3 +75,24 @@ Poniższa tabela zestawia wszystkie wymagane elementy repozytorium, ich lokaliza
    - Uczenie preprocesora `ColumnTransformer` (w tym mediany budżetu) wyłącznie na zbiorze treningowym.
 4. **Krytyczne podejście do generatywnego AI (Prompt Hygiene):**
    - Wykrycie subtelnej halucynacji daty granicznej horyzontu (19.02.2025 vs 23.02.2025) w odpowiedzi asystenta AI, obniżenie punktacji do 0/1 oraz sformułowanie 5 Zasad Bezpiecznej Współpracy z AI.
+
+---
+
+## 4. Otwarte zagadnienia i techniczne punkty uwagi (Open Issues & Review Result)
+
+Na podstawie całościowego przeglądu repozytorium, kodów źródłowych, testów jednostkowych oraz wygenerowanych artefaktów zidentyfikowano 3 techniczne punkty uwagi wymagające monitorowania lub dalszego rozwoju (bez defektów blokujących bieżący odbiór):
+
+1. **Ekstrapolacja budżetu reklamowego powyżej 1500 PLN:**
+   - **Wskazany plik:** [`src/predict.py`](../src/predict.py) oraz [`app.py`](../app.py)
+   - **Skutek:** W zbiorze treningowym maksymalny budżet reklamowy wynosił 1500 PLN. Drzewo decyzyjne (`DecisionTreeRegressor`) dla każdego budżetu > 1500 PLN prognozuje stałą wartość nasycenia (np. 125 sztuk dla sobót z promocją), co przy skrajnie wysokich budżetach (np. 5000 PLN) nie odzwierciedla potencjalnego dalszego wzrostu lub spadku efektywności kampanii.
+   - **Potrzebna poprawka:** Rozszerzenie zbioru danych o kampanie z wyższym budżetem lub wprowadzenie modelu opartego na cechach ciągłych (np. regularyzowana regresja grzbietowa lub model log-liniowy) dla nietypowych wielkości nakładów reklamowych.
+
+2. **Weryfikacja środowiskowa na niezależnej maszynie (Clean Machine Clone):**
+   - **Wskazany plik:** [`README.md`](../README.md) (Sekcja 6 i 7)
+   - **Skutek:** Całość potoku została przetestowana w bieżącym środowisku IDE (Windows 10, PowerShell, Python 3.13). Potwierdzenie pełnej powtarzalności z zewnętrznego punktu widzenia (klonowanie z publicznego adresu URL, instalacja w nowym `.venv`) wymaga wykonania testu poza maszyną deweloperską.
+   - **Potrzebna poprawka:** Przeprowadzenie testu dymnego (*smoke test*) na czystej stacji roboczej lub maszynie wirtualnej zgodnie z krokami w `README.md` bezpośrednio po publikacji na GitHubie.
+
+3. **Brak alternatywnego, statycznego notatnika demonstracyjnego:**
+   - **Wskazany plik:** [`notebooks/`](../notebooks/) (ewentualny `03_demo.ipynb`)
+   - **Skutek:** W projekcie zaimplementowano w pełni funkcjonalną aplikację webową Streamlit ([`app.py`](../app.py)). W środowiskach o zaostrzonych regułach sieciowych (blokada portu 8501 lub brak uprawnień do uruchomienia serwera lokalnego) odbiorca może mieć trudność z uruchomieniem interfejsu przeglądarkowego.
+   - **Potrzebna poprawka:** Opcjonalne przygotowanie lekkiego notatnika `notebooks/03_demo.ipynb` wykonującego predykcję za pomocą prostego kodu w komórkach dla recenzentów preferujących wyłącznie interfejs Jupyter.
