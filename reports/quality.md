@@ -220,9 +220,18 @@ Tabela podsumowująca wpływ zatwierdzonych reguł czyszczenia na zbiór trening
 |---|:---:|:---:|---|
 | **Liczba wierszy** | 255 | 252 | **-3 wiersze** (usunięto identyczne duplikaty na końcu pliku) |
 | **Liczba różnych dat** | 252 | 252 | **0** (100% unikalnych dni, zakres od 2024-01-01 do 2024-09-08) |
-| **Liczba poprawnych `orders`** | 251 | 248 | **-3** (2 ujemne wartości zamieniono na `NaN`, 1 duplikat usunięto) |
+| **Liczba poprawnych `orders`** | 251 | 248 | **-3** (usunięto 3 zduplikowane wiersze o poprawnych zamówieniach: 85, 52 i 102 szt.) |
 | **Liczba pustych budżetów (`planned_ad_spend_pln`)** | 4 | 4 | **0** (puste pola zachowano bez imputacji) |
 | **Wpisy `promo` zmienione na 1** | 0 | 3 | **+3** (tekstowe wpisy `' yes '` przekonwertowano na liczbę `1`, typ `int64`) |
+
+### Szczegółowy rachunek kontrolny różnicy w poprawnych `orders`:
+1. **Przed czyszczeniem (dane surowe):** 255 wierszy − 2 puste komórki `NaN` (daty `2024-03-04`, `2024-07-11`) − 2 ujemne wartości `orders < 0` (daty `2024-04-30` [-5.0], `2024-08-13` [-5.0]) = **251 poprawnych orders**.
+2. **Po czyszczeniu:** 252 unikalne wiersze − 4 braki `NaN` (2 pierwotne braki + 2 zamienione z wartości ujemnych z flagą `orders_invalid = 1`) = **248 poprawnych orders**.
+3. **Źródło różnicy (-3):** Różnica wynosi dokładnie $-3$ ($248 - 251 = -3$) i **wynika w 100% z usunięcia 3 identycznych zduplikowanych wierszy z końca pliku surowego**, które posiadały w pełni poprawne wartości zamówień:
+   - Data `2024-01-31` (orders = 85.0, wiersz 253 w CSV – powtórzenie wiersza 31),
+   - Data `2024-05-30` (orders = 52.0, wiersz 254 w CSV – powtórzenie wiersza 151),
+   - Data `2024-08-18` (orders = 102.0, wiersz 255 w CSV – powtórzenie wiersza 231).
+   Dwa rekordy z wartościami ujemnymi nie tworzą tej różnicy, ponieważ ani przed czyszczeniem (jako wartości $< 0$), ani po czyszczeniu (jako `NaN`) nie były wliczane do poprawnych zamówień.
 
 Dodatkowo w zbiorze wynikowym dodano kolumnę flagi audytowej `orders_invalid` (2 jedynki oznaczające ujemne wartości w surowych danych).
 

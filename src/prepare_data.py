@@ -7,7 +7,7 @@ Dołącza kolumnę day_of_week z data/raw/calendar.csv po kluczu date.
 
 import sys
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 import numpy as np
 import pandas as pd
 
@@ -161,19 +161,20 @@ def clean_orders_df(df_raw: pd.DataFrame, dataset_name: str = "dataset") -> Tupl
 
 def join_calendar_feature(
     df_orders: pd.DataFrame,
-    calendar_path: Optional[Path] = None,
+    calendar_path: Optional[Union[Path, str, pd.DataFrame]] = None,
     dataset_name: str = "dataset"
 ) -> pd.DataFrame:
     """Dołącza cechę day_of_week z calendar.csv z pełną walidacją integralności (Dzień 6/10)."""
-    if calendar_path is None:
-        calendar_path = Path("data/raw/calendar.csv")
-    calendar_path = resolve_path(calendar_path)
-
-    if not calendar_path.exists():
-        # W izolowanych środowiskach testowych bez pliku kalendarza zwracamy df bez modyfikacji
-        return df_orders
-
-    df_cal = pd.read_csv(calendar_path, encoding="utf-8")
+    if isinstance(calendar_path, pd.DataFrame):
+        df_cal = calendar_path.copy()
+    else:
+        if calendar_path is None:
+            calendar_path = Path("data/raw/calendar.csv")
+        resolved_path = resolve_path(Path(calendar_path))
+        if not resolved_path.exists():
+            # W izolowanych środowiskach testowych bez pliku kalendarza zwracamy df bez modyfikacji
+            return df_orders
+        df_cal = pd.read_csv(resolved_path, encoding="utf-8")
 
     # 1. Unikalność dat kalendarza
     if not df_cal["date"].is_unique:
@@ -194,7 +195,11 @@ def join_calendar_feature(
     sum_orders_before = df_orders["orders"].sum(skipna=True)
     rows_before = len(df_orders)
 
-    merged = df_orders.merge(df_cal[["date", "day_of_week"]], on="date", how="left")
+    df_orders_to_merge = (
+        df_orders.drop(columns=["day_of_week"]) if "day_of_week" in df_orders.columns else df_orders
+    )
+
+    merged = df_orders_to_merge.merge(df_cal[["date", "day_of_week"]], on="date", how="left")
 
     # 4. Sprawdzenie niezmienionej liczby wierszy (kontrola fan-out)
     if len(merged) != rows_before:

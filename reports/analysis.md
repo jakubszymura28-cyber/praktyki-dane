@@ -243,15 +243,23 @@ W celu zbadania zachowania funkcji agregujących w SQLite utworzono osobną tabe
 
 ### 🔍 Porównanie COUNT(orders) z raportem jakości danych (`reports/quality.md`)
 
-Przeprowadzono formalne porównanie liczby poprawnych zamówień uzyskanych z zapytania SQL w bazie oraz odnotowanych w raporcie jakości danych [`reports/quality.md`](quality.md):
+Przeprowadzono formalne porównanie liczby poprawnych zamówień uzyskanych z zapytania SQL w bazie oraz odnotowanych w raporcie jakości danych [`reports/quality.md`](quality.md) i notatniku [`notebooks/02_analysis.ipynb`](../notebooks/02_analysis.ipynb):
 
 - **Wynik zapytania SQL dla `orders_train`:**
   `COUNT(orders) = 248` (spośród 252 wierszy po deduplikacji).
-- **Wartość w raporcie jakości ([`reports/quality.md`](quality.md#L221) - Sekcja 10, Tabela Przed vs Po):**
-  *Liczba poprawnych `orders`* po czyszczeniu = **248** (z 251 przed czyszczeniem usunięto 2 wartości ujemne oraz 1 zduplikowany wiersz).
+- **Wartość w raporcie jakości ([`reports/quality.md`](quality.md#L215) - Sekcja 10, Tabela Przed vs Po):**
+  *Liczba poprawnych `orders`* po czyszczeniu = **248** (z 251 przed czyszczeniem ubyły dokładnie 3 rekordy).
+- **Wyjaśnienie różnicy (-3 poprawne zamówienia):**
+  1. **Przed czyszczeniem (dane surowe):** W pliku wejściowym (255 wierszy) znajdowało się **251 poprawnych orders** (po odjęciu 2 braków `NaN`: `2024-03-04`, `2024-07-11` oraz 2 wartości ujemnych `orders < 0`: `2024-04-30` [-5.0], `2024-08-13` [-5.0]).
+  2. **Po czyszczeniu:** W zbiorze oczyszczonym (252 unikalne wiersze) znajduje się **248 poprawnych orders** (po odjęciu 4 braków `NaN`, w tym 2 pierwotnych i 2 zamienionych z wartości ujemnych z flagą `orders_invalid = 1`).
+  3. **Źródło różnicy (-3):** Różnica wynosi dokładnie **-3** ($248 - 251 = -3$) i **wynika w 100% z usunięcia 3 identycznych zduplikowanych wierszy z końca pliku surowego**, które posiadały w pełni poprawne wartości zamówień:
+     - `2024-01-31` (orders = 85.0, wiersz 253 w CSV – powtórzenie wiersza 31),
+     - `2024-05-30` (orders = 52.0, wiersz 254 w CSV – powtórzenie wiersza 151),
+     - `2024-08-18` (orders = 102.0, wiersz 255 w CSV – powtórzenie wiersza 231).
+     Dwa rekordy z ujemnymi zamówieniami nie wpływają na tę różnicę, ponieważ ani przed czyszczeniem (jako wartości $< 0$), ani po czyszczeniu (jako `NaN`) nie były zaliczane do poprawnych obserwacji.
 - **Weryfikacja spójności:**
-  $$\text{COUNT(orders)}_{\text{SQLite}} = 248 \quad \equiv \quad \text{Poprawne orders}_{\text{quality.md}} = 248$$
-  Liczby w obu raportach są **w 100% zgodne**, a mechanizm liczenia w SQLite idealnie odzwierciedla reguły czyszczenia danych.
+  $$\text{COUNT(orders)}_{\text{SQLite}} = 248 \quad \equiv \quad \text{Poprawne orders}_{\text{quality.md}} = 248 \quad \equiv \quad \text{Poprawne orders}_{\text{02\_analysis.ipynb}} = 248$$
+  Liczby oraz ich analityczne uzasadnienie we wszystkich trzech źródłach są w 100% identyczne i spójne.
 
 ---
 
